@@ -69,9 +69,10 @@ class LoginScreen extends StatelessWidget {
                                 ),
                               ),
                               AppSpacing.h20,
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 32),
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: maxButtonWidth,
+                                ),
                                 child: Row(
                                   children: const [
                                     Expanded(
@@ -86,10 +87,9 @@ class LoginScreen extends StatelessWidget {
                                       child: Text(
                                         'or',
                                         style: TextStyle(
-                                          color: AppColors.textPrimary,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 20
-                                        ),
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 20),
                                       ),
                                     ),
                                     Expanded(
