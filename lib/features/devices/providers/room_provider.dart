@@ -5,7 +5,8 @@ final roomListProvider = Provider<List<String>>((_) {
     'Phòng khách',
     'Phòng ngủ chính',
     'Bếp',
-    'Ban công',
+    'Phòng Tắm',
+    'Cổng',
     'Garage',
   ];
 });

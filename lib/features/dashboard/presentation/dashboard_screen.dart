@@ -13,7 +13,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return AuthScaffold(
       title: 'Hi, TEST USER',
-      panelHeightFactor: 0.82,
+      panelHeightFactor: 0.8,
       contentTopPaddingFactor: 0.08,
       waveOffset: 0,
       showWave: false,

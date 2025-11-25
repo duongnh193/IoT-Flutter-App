@@ -8,9 +8,9 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/login_success_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/security_pin_screen.dart';
+import '../../features/analysis/presentation/analysis_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/devices/presentation/devices_screen.dart';
-import '../../features/scenes/presentation/scenes_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../shared/layout/app_shell.dart';
 
@@ -23,7 +23,7 @@ enum AppRoute {
   addName,
   dashboard,
   devices,
-  scenes,
+  analysis,
   settings
 }
 
@@ -97,10 +97,10 @@ final appRouterProvider = Provider<GoRouter>(
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/scenes',
-                name: AppRoute.scenes.name,
+                path: '/analysis',
+                name: AppRoute.analysis.name,
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: ScenesScreen()),
+                    const NoTransitionPage(child: AnalysisScreen()),
               ),
             ],
           ),

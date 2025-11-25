@@ -20,4 +20,10 @@ class AppColors {
 
   // Helpers
   static const white = Colors.white;
+
+  // Charts
+  static const chartCyan = Color(0xFF18BFE3);
+  static const chartOrange = Color(0xFFF3A447);
+  static const chartPurple = Color(0xFF8A7CF5);
+  static const chartPink = Color(0xFFF42EA9);
 }
