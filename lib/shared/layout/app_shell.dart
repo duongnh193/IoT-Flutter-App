@@ -27,14 +27,14 @@ class AppShell extends StatelessWidget {
             label: 'Trang chủ',
           ),
           NavigationDestination(
-            icon: Icon(Icons.devices_other_outlined),
-            selectedIcon: Icon(Icons.devices_other),
-            label: 'Thiết bị',
+            icon: Icon(Icons.meeting_room_outlined),
+            selectedIcon: Icon(Icons.meeting_room),
+            label: 'Phòng',
           ),
           NavigationDestination(
-            icon: Icon(Icons.auto_mode_outlined),
-            selectedIcon: Icon(Icons.auto_mode_rounded),
-            label: 'Ngữ cảnh',
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'Phân tích',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

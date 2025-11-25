@@ -19,6 +19,12 @@ class AuthScaffold extends StatelessWidget {
     this.titleWidget,
     this.showWave = true,
     this.panelScrollable = false,
+    this.panelOffset = 0,
+    this.panelShadow,
+    this.backgroundGradient,
+    this.panelOffsetFactor,
+    this.horizontalPadding = 20,
+    this.horizontalPaddingFactor,
   });
 
   final String title;
@@ -33,82 +39,109 @@ class AuthScaffold extends StatelessWidget {
   final Widget? titleWidget;
   final bool showWave;
   final bool panelScrollable;
+  final double panelOffset;
+  final List<BoxShadow>? panelShadow;
+  final Gradient? backgroundGradient;
+  final double? panelOffsetFactor;
+  final double horizontalPadding;
+  final double? horizontalPaddingFactor;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
+      extendBody: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final panelHeight =
               (constraints.maxHeight * panelHeightFactor).clamp(minPanelHeight, constraints.maxHeight);
           final contentTopPadding = panelHeight * contentTopPaddingFactor;
+          final effectiveOffset = panelOffsetFactor != null
+              ? constraints.maxHeight * panelOffsetFactor!
+              : panelOffset;
+          final effectiveHorizontalPadding = horizontalPaddingFactor != null
+              ? constraints.maxWidth * horizontalPaddingFactor!
+              : horizontalPadding;
 
-          return SafeArea(
-            child: Column(
-              children: [
-                AppSpacing.h16,
-                titleWidget ??
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: AppTypography.headlineL,
+          return Container(
+            decoration: BoxDecoration(
+              color: backgroundGradient == null ? backgroundColor : null,
+              gradient: backgroundGradient,
+            ),
+            child: SafeArea(
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  Positioned.fill(
+                    child: Column(
+                      children: [
+                        AppSpacing.h16,
+                        titleWidget ??
+                            Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: AppTypography.headlineL,
+                            ),
+                        AppSpacing.h20,
+                        const Spacer(),
+                      ],
                     ),
-                AppSpacing.h20,
-                Expanded(
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: panelHeight,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: panelColor,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(32),
-                              topRight: Radius.circular(32),
-                            ),
-                          ),
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                top: contentTopPadding,
-                                bottom: 48,
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: effectiveOffset,
+                    height: panelHeight,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: panelColor,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                        boxShadow: panelShadow ??
+                            [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(20),
+                                blurRadius: 12,
+                                offset: const Offset(0, -4),
                               ),
-                              child: LayoutBuilder(
-                                builder: (context, panelConstraints) {
-                                  final content = panelBuilder(panelConstraints);
-                                  if (panelScrollable) {
-                                    return SingleChildScrollView(
-                                      child: content,
-                                    );
-                                  }
-                                  return content;
-                                },
-                              ),
-                            ),
-                          ),
+                            ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: contentTopPadding,
+                          bottom: 48,
+                          left: effectiveHorizontalPadding,
+                          right: effectiveHorizontalPadding,
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, panelConstraints) {
+                            final content = panelBuilder(panelConstraints);
+                            if (panelScrollable) {
+                              return SingleChildScrollView(
+                                child: content,
+                              );
+                            }
+                            return content;
+                          },
                         ),
                       ),
-                      if (showWave)
-                        Positioned(
-                          bottom: waveOffset,
-                          child: IgnorePointer(
-                            child: Image.asset(
-                              waveAsset,
-                              width: constraints.maxWidth,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  if (showWave)
+                    Positioned(
+                      bottom: waveOffset,
+                      child: IgnorePointer(
+                        child: Image.asset(
+                          waveAsset,
+                          width: constraints.maxWidth,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         },
