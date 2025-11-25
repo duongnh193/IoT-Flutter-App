@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -8,15 +9,16 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/layout/auth_scaffold.dart';
+import '../providers/auth_session_provider.dart';
 
-class LoginSuccessScreen extends StatefulWidget {
+class LoginSuccessScreen extends ConsumerStatefulWidget {
   const LoginSuccessScreen({super.key});
 
   @override
-  State<LoginSuccessScreen> createState() => _LoginSuccessScreenState();
+  ConsumerState<LoginSuccessScreen> createState() => _LoginSuccessScreenState();
 }
 
-class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
+class _LoginSuccessScreenState extends ConsumerState<LoginSuccessScreen> {
   Timer? _timer;
 
   @override
@@ -24,6 +26,8 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
     super.initState();
     _timer = Timer(const Duration(seconds: 1, milliseconds: 300), () {
       if (mounted) {
+        // Mark session logged-in so app restores to dashboard next time.
+        ref.read(authSessionProvider.notifier).logIn();
         context.pushReplacementNamed(AppRoute.addName.name);
       }
     });

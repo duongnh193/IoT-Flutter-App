@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,12 +9,13 @@ import '../../../core/constants/app_typography.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/layout/auth_scaffold.dart';
 import '../../../shared/widgets/buttons/app_buttons.dart';
+import '../providers/auth_session_provider.dart';
 
-class AddNameScreen extends StatelessWidget {
+class AddNameScreen extends ConsumerWidget {
   const AddNameScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AuthScaffold(
       title: 'Thêm tên',
       panelHeightFactor: 0.75,
@@ -75,7 +77,8 @@ class AddNameScreen extends StatelessWidget {
                 label: 'Tiếp tục',
                 background: AppColors.primary,
                 onPressed: () {
-                  context.goNamed(AppRoute.dashboard.name);
+                  ref.read(authSessionProvider.notifier).logIn();
+                  context.pushReplacementNamed(AppRoute.dashboard.name);
                 },
               ),
             ),
