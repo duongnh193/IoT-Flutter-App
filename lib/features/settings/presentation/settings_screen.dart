@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
 
     return AuthScaffold(
       title: 'Cài đặt',
-      panelHeightFactor: 0.82,
+      panelHeightFactor: 0.8,
       contentTopPaddingFactor: 0.08,
       showWave: false,
       panelScrollable: true,

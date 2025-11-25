@@ -1,12 +1,14 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../shared/layout/auth_scaffold.dart';
 import '../providers/analysis_provider.dart';
+import '../../../core/router/app_router.dart';
 
 class AnalysisScreen extends ConsumerWidget {
   const AnalysisScreen({super.key});
@@ -18,7 +20,7 @@ class AnalysisScreen extends ConsumerWidget {
     return AuthScaffold(
       title: 'Phân Tích',
       showWave: false,
-      panelHeightFactor: 0.82,
+      panelHeightFactor: 0.8,
       contentTopPaddingFactor: 0.08,
       panelScrollable: true,
       horizontalPaddingFactor: 0.06,
@@ -36,7 +38,7 @@ class AnalysisScreen extends ConsumerWidget {
             _DistributionChart(stats: stats),
             AppSpacing.h12,
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => context.pushNamed(AppRoute.analysisDetail.name),
               icon: const Icon(Icons.insights, color: AppColors.primary),
               label: const Text(
                 'Xem Chi Tiết Biểu Đồ Năng Lượng',

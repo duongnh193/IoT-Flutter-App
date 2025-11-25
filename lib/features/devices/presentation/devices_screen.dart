@@ -25,7 +25,7 @@ class DevicesScreen extends ConsumerWidget {
     return AuthScaffold(
       title: 'Chọn Phòng',
       panelHeightFactor: 0.8,
-      contentTopPaddingFactor: 0.12,
+      contentTopPaddingFactor: 0.08,
       showWave: false,
       panelScrollable: true,
       horizontalPaddingFactor: 0.08,
