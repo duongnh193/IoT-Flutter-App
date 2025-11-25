@@ -2,15 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/presentation/add_name_screen.dart';
+import '../../features/auth/presentation/login_phone_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/login_success_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
+import '../../features/auth/presentation/security_pin_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/devices/presentation/devices_screen.dart';
 import '../../features/scenes/presentation/scenes_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../shared/layout/app_shell.dart';
 
-enum AppRoute { onboarding, login, dashboard, devices, scenes, settings }
+enum AppRoute {
+  onboarding,
+  login,
+  loginPhone,
+  pin,
+  phoneSuccess,
+  addName,
+  dashboard,
+  devices,
+  scenes,
+  settings
+}
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -30,6 +45,30 @@ final appRouterProvider = Provider<GoRouter>(
         name: AppRoute.login.name,
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: LoginScreen()),
+      ),
+      GoRoute(
+        path: '/login-phone',
+        name: AppRoute.loginPhone.name,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: LoginPhoneScreen()),
+      ),
+      GoRoute(
+        path: '/pin',
+        name: AppRoute.pin.name,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: SecurityPinScreen()),
+      ),
+      GoRoute(
+        path: '/phone-success',
+        name: AppRoute.phoneSuccess.name,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: LoginSuccessScreen()),
+      ),
+      GoRoute(
+        path: '/add-name',
+        name: AppRoute.addName.name,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: AddNameScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
