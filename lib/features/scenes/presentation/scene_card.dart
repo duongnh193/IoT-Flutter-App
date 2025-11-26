@@ -64,7 +64,7 @@ class SceneCard extends StatelessWidget {
               value: isActive,
               onChanged: (_) => onToggle(),
               activeTrackColor: colorScheme.primary,
-              activeColor: colorScheme.onPrimary,
+              activeThumbColor: colorScheme.onPrimary,
             ),
           ],
         ),

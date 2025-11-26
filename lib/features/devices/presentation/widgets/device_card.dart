@@ -60,7 +60,7 @@ class DeviceCard extends StatelessWidget {
               ),
               Switch(
                 value: isOn,
-                activeColor: colorScheme.onPrimary,
+                activeThumbColor: colorScheme.onPrimary,
                 activeTrackColor: colorScheme.primary,
                 onChanged: (_) => onToggle(),
               ),
