@@ -9,6 +9,7 @@ import '../providers/device_provider.dart';
 import '../providers/room_provider.dart';
 import 'widgets/device_card.dart';
 import 'device_control_screen.dart';
+import 'gate_control_screen.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
   const RoomDetailScreen({super.key, required this.roomId});
@@ -23,10 +24,14 @@ class RoomDetailScreen extends ConsumerWidget {
       orElse: () => rooms.first,
     );
 
-    final devices = ref
-        .watch(deviceControllerProvider)
-        .where((d) => d.room.toLowerCase().contains(room.name.toLowerCase()))
-        .toList();
+    final devices = ref.watch(deviceControllerProvider).where((d) {
+      final roomName = d.room.toLowerCase();
+      final keywords = [
+        room.name.toLowerCase(),
+        ...?room.keywords?.map((e) => e.toLowerCase()),
+      ];
+      return keywords.any((k) => roomName.contains(k));
+    }).toList();
 
     return AuthScaffold(
       title: room.name,
@@ -50,29 +55,33 @@ class RoomDetailScreen extends ConsumerWidget {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 220,
-              childAspectRatio: 3 / 3.6,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-            ),
-            itemCount: devices.length,
-            itemBuilder: (_, index) {
-              final device = devices[index];
-              return DeviceCard(
-                device: device,
-                compact: true,
-                onToggle: () => ref
-                    .read(deviceControllerProvider.notifier)
-                    .toggle(device.id),
-                controlBuilder: device.type == DeviceType.climate
-                    ? (_) => DeviceControlScreen(device: device)
-                    : null,
-              );
-            },
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 220,
+                  childAspectRatio: 3 / 3.6,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                ),
+                itemCount: devices.length,
+                itemBuilder: (_, index) {
+                  final device = devices[index];
+                  WidgetBuilder? controlBuilder;
+                  if (device.type == DeviceType.climate) {
+                    controlBuilder = (_) => DeviceControlScreen(device: device);
+                  } else if (device.type == DeviceType.lock) {
+                    controlBuilder = (_) => GateControlScreen(device: device);
+                  }
+                  return DeviceCard(
+                    device: device,
+                    compact: true,
+                    onToggle: () => ref
+                        .read(deviceControllerProvider.notifier)
+                        .toggle(device.id),
+                    controlBuilder: controlBuilder,
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
         );
       },
       titleWidget: Padding(

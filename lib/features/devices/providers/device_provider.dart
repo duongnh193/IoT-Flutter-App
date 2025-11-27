@@ -62,8 +62,16 @@ const _mockDevices = [
     id: 'lock-front',
     name: 'Khóa cửa',
     type: DeviceType.lock,
-    room: 'Cửa chính',
+    room: 'Cổng',
     isOn: true,
+    power: 3,
+  ),
+  Device(
+    id: 'lock-side',
+    name: 'Cổng phụ',
+    type: DeviceType.lock,
+    room: 'Cổng',
+    isOn: false,
     power: 3,
   ),
   Device(

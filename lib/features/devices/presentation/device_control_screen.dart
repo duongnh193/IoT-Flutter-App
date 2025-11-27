@@ -86,7 +86,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   onTogglePower: () => notifier.toggle(widget.device.id),
                 ),
                 AppSpacing.h16,
-                _TempSlider(
+                _TempSliderPanel(
                   value: temp,
                   onChanged: (v) => setState(() => temp = v),
                 ),
@@ -329,7 +329,7 @@ class _SpeedPowerRow extends StatelessWidget {
                   scale: 0.9,
                   child: Switch(
                     value: isOn,
-                    activeColor: Colors.white,
+                    activeThumbColor: Colors.white,
                     activeTrackColor: AppColors.controlPurpleSoft,
                     inactiveTrackColor: Colors.white38,
                     onChanged: (_) => onTogglePower(),
@@ -344,17 +344,17 @@ class _SpeedPowerRow extends StatelessWidget {
   }
 }
 
-class _TempSlider extends StatefulWidget {
-  const _TempSlider({required this.value, required this.onChanged});
+class _TempSliderPanel extends StatefulWidget {
+  const _TempSliderPanel({required this.value, required this.onChanged});
 
   final double value;
   final ValueChanged<double> onChanged;
 
   @override
-  State<_TempSlider> createState() => _TempSliderState();
+  State<_TempSliderPanel> createState() => _TempSliderPanelState();
 }
 
-class _TempSliderState extends State<_TempSlider> {
+class _TempSliderPanelState extends State<_TempSliderPanel> {
   late double localValue;
 
   @override
@@ -364,7 +364,7 @@ class _TempSliderState extends State<_TempSlider> {
   }
 
   @override
-  void didUpdateWidget(covariant _TempSlider oldWidget) {
+  void didUpdateWidget(covariant _TempSliderPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
       localValue = widget.value;
