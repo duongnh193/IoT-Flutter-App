@@ -40,6 +40,9 @@ class DeviceCard extends StatelessWidget {
           onTap: open,
           child: content,
         ),
+        closedColor: Colors.transparent,
+        middleColor: Colors.transparent,
+        openColor: Colors.transparent,
       );
     }
 

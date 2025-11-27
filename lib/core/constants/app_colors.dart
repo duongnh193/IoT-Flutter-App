@@ -32,4 +32,9 @@ class AppColors {
   static const chartOrange = Color(0xFFF3A447);
   static const chartPurple = Color(0xFF8A7CF5);
   static const chartPink = Color(0xFFF42EA9);
+
+  // Control panel
+  static const controlPurple = Color(0xFF7B2FF7);
+  static const controlPurpleDark = Color(0xFF4C1B9B);
+  static const controlPurpleSoft = Color(0xFFE7D6FF);
 }
