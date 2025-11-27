@@ -21,6 +21,12 @@ class AppColors {
   // Helpers
   static const white = Colors.white;
 
+  // Cards / Rooms
+  static const roomPeach = Color(0xFFFEE4D9);
+  static const roomSky = Color(0xFFDDEAFF);
+  static const roomMint = Color(0xFFE1F5ED);
+  static const roomLavender = Color(0xFFF5E7FF);
+
   // Charts
   static const chartCyan = Color(0xFF18BFE3);
   static const chartOrange = Color(0xFFF3A447);

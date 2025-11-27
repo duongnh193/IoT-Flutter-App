@@ -12,11 +12,9 @@ import '../../features/analysis/presentation/analysis_screen.dart';
 import '../../features/analysis/presentation/analysis_detail_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/devices/presentation/devices_screen.dart';
+import '../../features/devices/presentation/room_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../shared/layout/app_shell.dart';
-import 'route_persistence.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../features/auth/providers/auth_session_provider.dart';
 
 enum AppRoute {
   onboarding,
@@ -27,59 +25,18 @@ enum AppRoute {
   addName,
   dashboard,
   devices,
+  roomDetail,
   analysis,
   analysisDetail,
   settings
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-class SharedPrefsRouteStore implements RouteStore {
-  SharedPrefsRouteStore(this.prefs);
-
-  final SharedPreferences prefs;
-
-  @override
-  String? getString(String key) => prefs.getString(key);
-
-  @override
-  Future<bool> setString(String key, String value) => prefs.setString(key, value);
-}
-
-class MemoryRouteStore implements RouteStore {
-  final Map<String, String> _cache = {};
-
-  @override
-  String? getString(String key) => _cache[key];
-
-  @override
-  Future<bool> setString(String key, String value) async {
-    _cache[key] = value;
-    return true;
-  }
-}
-
-final sharedPrefsProvider = Provider<SharedPreferences?>((ref) => null);
-
-final initialRouteProvider = Provider<String>((ref) {
-  final isLoggedIn = ref.watch(authSessionProvider);
-  final last = ref.watch(routePersistenceProvider).lastRoute;
-  if (isLoggedIn) {
-    return last ?? '/dashboard';
-  }
-  return '/onboarding';
-});
-final routePersistenceProvider = Provider<RoutePersistence>((ref) {
-  final prefs = ref.watch(sharedPrefsProvider);
-  final store = prefs != null ? SharedPrefsRouteStore(prefs) : MemoryRouteStore();
-  return RoutePersistence(store);
-});
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final persistence = ref.watch(routePersistenceProvider);
-
-  final router = GoRouter(
+  return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: ref.watch(initialRouteProvider),
+    initialLocation: '/onboarding',
     routes: [
       GoRoute(
         path: '/onboarding',
@@ -138,6 +95,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: AppRoute.devices.name,
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: DevicesScreen()),
+                routes: [
+                  GoRoute(
+                    path: ':roomId',
+                    name: AppRoute.roomDetail.name,
+                    pageBuilder: (context, state) => NoTransitionPage(
+                      child: RoomDetailScreen(
+                        roomId: state.pathParameters['roomId'] ?? '',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -190,12 +158,5 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
     ],
-    observers: [
-      RoutePersistenceObserver(persistence),
-    ],
   );
-
-  // Also listen for location changes via RouteInformationProvider.
-  persistence.attachRouter(router);
-  return router;
 });

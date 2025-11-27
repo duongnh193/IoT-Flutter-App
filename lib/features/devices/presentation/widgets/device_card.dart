@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/device.dart';
@@ -8,11 +9,54 @@ class DeviceCard extends StatelessWidget {
     required this.device,
     required this.onToggle,
     this.compact = false,
+    this.controlBuilder,
   });
 
   final Device device;
   final VoidCallback onToggle;
   final bool compact;
+  final WidgetBuilder? controlBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _CardBody(
+      device: device,
+      compact: compact,
+      onToggle: onToggle,
+    );
+
+    if (controlBuilder != null) {
+      return OpenContainer(
+        closedElevation: 0,
+        openElevation: 0,
+        transitionDuration: const Duration(milliseconds: 450),
+        closedShape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        openShape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        openBuilder: (context, _) => controlBuilder!(context),
+        closedBuilder: (context, open) => InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: open,
+          child: content,
+        ),
+      );
+    }
+
+    return content;
+  }
+}
+
+class _CardBody extends StatelessWidget {
+  const _CardBody({
+    required this.device,
+    required this.compact,
+    required this.onToggle,
+  });
+
+  final Device device;
+  final bool compact;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +102,14 @@ class DeviceCard extends StatelessWidget {
                   color: isOn ? colorScheme.primary : colorScheme.onSurface,
                 ),
               ),
-              Switch(
-                value: isOn,
-                activeThumbColor: colorScheme.onPrimary,
-                activeTrackColor: colorScheme.primary,
-                onChanged: (_) => onToggle(),
+              Transform.scale(
+                scale: 0.9,
+                child: Switch(
+                  value: isOn,
+                  activeThumbColor: colorScheme.onPrimary,
+                  activeTrackColor: colorScheme.primary,
+                  onChanged: (_) => onToggle(),
+                ),
               ),
             ],
           ),
