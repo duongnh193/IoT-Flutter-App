@@ -1,53 +1,32 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_colors.dart';
+import '../data/models/room_model.dart' as room_model;
+import '../di/device_dependencies.dart';
+import '../presentation/mappers/room_mapper.dart';
 
-class Room {
-  const Room({
-    required this.id,
-    required this.name,
-    required this.icon,
-    required this.background,
-    this.keywords = const [],
-  });
+/// Provider for rooms using Clean Architecture
+final roomListProvider = FutureProvider<List<room_model.Room>>((ref) async {
+  final useCase = ref.watch(getRoomsUseCaseProvider);
+  final entities = await useCase();
+  return entities.map((e) => RoomMapper.toPresentation(e)).toList();
+});
 
-  final String id;
-  final String name;
-  final IconData icon;
-  final Color background;
-  final List<String>? keywords;
-}
+/// Synchronous provider that unwraps FutureProvider
+final roomsProvider = Provider<List<room_model.Room>>((ref) {
+  final asyncValue = ref.watch(roomListProvider);
+  return asyncValue.when(
+    data: (rooms) => rooms,
+    loading: () => <room_model.Room>[],
+    error: (_, __) => <room_model.Room>[],
+  );
+});
 
-final roomListProvider = Provider<List<Room>>((_) {
-  return const [
-    Room(
-      id: 'living',
-      name: 'Phòng khách',
-      icon: Icons.weekend_outlined,
-      background: AppColors.roomPeach,
-      keywords: ['phòng khách', 'living'],
-    ),
-    Room(
-      id: 'bedroom',
-      name: 'Phòng ngủ',
-      icon: Icons.bed_outlined,
-      background: AppColors.roomSky,
-      keywords: ['phòng ngủ', 'bed'],
-    ),
-    Room(
-      id: 'gate',
-      name: 'Cổng',
-      icon: Icons.garage_outlined,
-      background: AppColors.roomMint,
-      keywords: ['cửa chính', 'cổng', 'gate'],
-    ),
-    Room(
-      id: 'bath',
-      name: 'Phòng tắm',
-      icon: Icons.bathtub_outlined,
-      background: AppColors.roomLavender,
-      keywords: ['tắm', 'bath'],
-    ),
-  ];
+/// Provider for single room by ID
+final roomByIdProvider = Provider.family<room_model.Room?, String>((ref, roomId) {
+  final rooms = ref.watch(roomsProvider);
+  try {
+    return rooms.firstWhere((room) => room.id == roomId);
+  } catch (e) {
+    return null;
+  }
 });

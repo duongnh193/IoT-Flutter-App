@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
-import '../../../core/router/app_router.dart';
 import '../../../shared/layout/auth_scaffold.dart';
 import '../providers/auth_session_provider.dart';
 
@@ -28,7 +27,8 @@ class _LoginSuccessScreenState extends ConsumerState<LoginSuccessScreen> {
       if (mounted) {
         // Mark session logged-in so app restores to dashboard next time.
         ref.read(authSessionProvider.notifier).logIn();
-        context.pushReplacementNamed(AppRoute.addName.name);
+        // Navigate directly to dashboard after successful login
+        context.go('/dashboard');
       }
     });
   }
@@ -52,7 +52,7 @@ class _LoginSuccessScreenState extends ConsumerState<LoginSuccessScreen> {
           children: [
             Image.asset(
               'assets/images/like-thumb-hand-success-svgrepo-com 1.png',
-              width: 140,
+              width: panelConstraints.maxWidth * 0.35,
               fit: BoxFit.contain,
             ),
             AppSpacing.h20,

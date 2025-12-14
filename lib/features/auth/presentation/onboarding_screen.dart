@@ -63,7 +63,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             AppSpacing.h16,
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl + 4,
+                vertical: AppSpacing.xl,
+              ),
               child: Column(
                 children: [
                   AppPrimaryButton(
@@ -79,7 +82,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       final isActive = index == _current;
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 5),
+                        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
                         width: isActive ? 10 : 8,
                         height: isActive ? 10 : 8,
                         decoration: BoxDecoration(
@@ -115,7 +118,11 @@ class _OnboardingPage extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 36, left: 20, right: 20),
+          padding: const EdgeInsets.only(
+            top: AppSpacing.xxl + 12,
+            left: AppSpacing.lg + 4,
+            right: AppSpacing.lg + 4,
+          ),
           child: Text(
             title,
             textAlign: TextAlign.center,
@@ -126,14 +133,14 @@ class _OnboardingPage extends StatelessWidget {
         Expanded(
           child: Container(
             width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius + 12),
             ),
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSpacing.xl + 4),
                 child: Image.asset(
                   imagePath,
                   fit: BoxFit.contain,

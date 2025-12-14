@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../shared/layout/auth_scaffold.dart';
-import '../models/device.dart';
+import '../domain/entities/device_type.dart';
 import '../providers/device_provider.dart';
 import '../providers/room_provider.dart';
 import 'widgets/device_card.dart';
@@ -18,20 +18,46 @@ class RoomDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rooms = ref.watch(roomListProvider);
-    final room = rooms.firstWhere(
-      (r) => r.id == roomId,
-      orElse: () => rooms.first,
-    );
+    final roomsAsync = ref.watch(roomListProvider);
+    final devices = ref.watch(devicesProvider);
 
-    final devices = ref.watch(deviceControllerProvider).where((d) {
-      final roomName = d.room.toLowerCase();
-      final keywords = [
-        room.name.toLowerCase(),
-        ...?room.keywords?.map((e) => e.toLowerCase()),
-      ];
-      return keywords.any((k) => roomName.contains(k));
-    }).toList();
+    return roomsAsync.when(
+      data: (rooms) {
+        // Handle empty rooms list gracefully
+        if (rooms.isEmpty) {
+          return Center(
+            child: Text(
+              'Không tìm thấy phòng nào',
+              style: AppTypography.bodyM,
+            ),
+          );
+        }
+
+        // Find room by ID, fallback to first room only if rooms list is not empty
+        final room = rooms.firstWhere(
+          (r) => r.id == roomId,
+          orElse: () => rooms.first,
+        );
+
+        final roomDevices = devices.where((d) {
+          final roomName = d.room.toLowerCase();
+          final keywords = [
+            room.name.toLowerCase(),
+            ...?room.keywords?.map((e) => e.toLowerCase()),
+          ];
+          return keywords.any((k) => roomName.contains(k));
+        }).toList();
+
+        return _buildRoomDetail(context, ref, room, roomDevices);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Text('Lỗi: $error', style: AppTypography.bodyM),
+      ),
+    );
+  }
+
+  Widget _buildRoomDetail(BuildContext context, WidgetRef ref, room, List devices) {
 
     return AuthScaffold(
       title: room.name,

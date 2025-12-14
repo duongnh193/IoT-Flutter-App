@@ -7,13 +7,13 @@ class DeviceCard extends StatelessWidget {
   const DeviceCard({
     super.key,
     required this.device,
-    required this.onToggle,
+    this.onToggle,
     this.compact = false,
     this.controlBuilder,
   });
 
   final Device device;
-  final VoidCallback onToggle;
+  final VoidCallback? onToggle;
   final bool compact;
   final WidgetBuilder? controlBuilder;
 
@@ -54,12 +54,12 @@ class _CardBody extends StatelessWidget {
   const _CardBody({
     required this.device,
     required this.compact,
-    required this.onToggle,
+    this.onToggle,
   });
 
   final Device device;
   final bool compact;
-  final VoidCallback onToggle;
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -105,15 +105,16 @@ class _CardBody extends StatelessWidget {
                   color: isOn ? colorScheme.primary : colorScheme.onSurface,
                 ),
               ),
-              Transform.scale(
-                scale: 0.9,
-                child: Switch(
-                  value: isOn,
-                  activeThumbColor: colorScheme.onPrimary,
-                  activeTrackColor: colorScheme.primary,
-                  onChanged: (_) => onToggle(),
+              if (onToggle != null)
+                Transform.scale(
+                  scale: 0.9,
+                  child: Switch(
+                    value: isOn,
+                    activeThumbColor: colorScheme.onPrimary,
+                    activeTrackColor: colorScheme.primary,
+                    onChanged: (_) => onToggle!(),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 10),

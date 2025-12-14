@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/constants/app_typography.dart';
-import '../../../shared/layout/auth_scaffold.dart';
+import '../../../core/constants/responsive_typography.dart';
+import '../../../shared/layout/app_scaffold.dart';
+import '../../../shared/layout/content_scaffold.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../providers/analysis_provider.dart';
 import '../../../core/router/app_router.dart';
 
@@ -16,33 +18,45 @@ class AnalysisScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(analysisProvider);
+    final sizeClass = context.screenSizeClass;
 
-    return AuthScaffold(
+    return ContentScaffold(
       title: 'Phân Tích',
-      showWave: false,
-      panelHeightFactor: 0.8,
-      contentTopPaddingFactor: 0.08,
-      panelScrollable: true,
+      panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
       horizontalPaddingFactor: 0.06,
-      panelBuilder: (constraints) {
+      scrollable: true,
+      body: (context, constraints) {
+        final spacing = sizeClass == ScreenSizeClass.expanded 
+            ? AppSpacing.xl 
+            : AppSpacing.lg;
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _StatsCard(stats: stats),
-            AppSpacing.h20,
+            _StatsCard(
+              stats: stats,
+              constraints: constraints,
+            ),
+            SizedBox(height: spacing),
             Text(
               'Phân Bố Tiêu Thụ:',
-              style: AppTypography.titleM,
+              style: context.responsiveTitleM.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            AppSpacing.h12,
+            SizedBox(height: sizeClass == ScreenSizeClass.compact 
+                ? AppSpacing.md 
+                : AppSpacing.lg),
             _DistributionChart(stats: stats),
-            AppSpacing.h12,
+            SizedBox(height: sizeClass == ScreenSizeClass.compact 
+                ? AppSpacing.md 
+                : AppSpacing.lg),
             TextButton.icon(
               onPressed: () => context.pushNamed(AppRoute.analysisDetail.name),
               icon: const Icon(Icons.insights, color: AppColors.primary),
-              label: const Text(
+              label: Text(
                 'Xem Chi Tiết Biểu Đồ Năng Lượng',
-                style: TextStyle(
+                style: context.responsiveBodyM.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),
@@ -51,78 +65,82 @@ class AnalysisScreen extends ConsumerWidget {
           ],
         );
       },
-      titleWidget: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Phân Tích',
-            style: AppTypography.titleL.copyWith(color: Colors.black87),
-          ),
-          AppSpacing.h12,
-        ],
-      ),
     );
   }
 }
 
 class _StatsCard extends StatelessWidget {
-  const _StatsCard({required this.stats});
+  const _StatsCard({
+    required this.stats,
+    required this.constraints,
+  });
 
   final AnalysisStats stats;
+  final BoxConstraints constraints;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          )
-        ],
-      ),
+    final sizeClass = context.screenSizeClass;
+    final padding = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.xl 
+        : AppSpacing.lg;
+    
+    return AppCard(
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             stats.monthLabel,
-            style: AppTypography.bodyM.copyWith(
+            style: context.responsiveBodyM.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
-          AppSpacing.h12,
+          SizedBox(height: sizeClass == ScreenSizeClass.compact 
+              ? AppSpacing.md 
+              : AppSpacing.lg),
           Row(
             children: [
-              _StatTile(
-                icon: Icons.bolt_outlined,
-                label: 'Tổng Điện Năng',
-                value: '${stats.totalEnergyKwh}kwh',
-                valueColor: AppColors.textPrimary,
+              Expanded(
+                child: _StatTile(
+                  context: context,
+                  icon: Icons.bolt_outlined,
+                  label: 'Tổng Điện Năng',
+                  value: '${stats.totalEnergyKwh}kwh',
+                  valueColor: AppColors.textPrimary,
+                ),
               ),
-              const SizedBox(width: 16),
-              _StatTile(
-                icon: Icons.payments_outlined,
-                label: 'Tổng Tiền Điện',
-                value: stats.totalCost.toStringAsFixed(0),
-                valueColor: Colors.indigo,
+              SizedBox(width: sizeClass == ScreenSizeClass.compact 
+                  ? AppSpacing.md 
+                  : AppSpacing.lg),
+              Expanded(
+                child: _StatTile(
+                  context: context,
+                  icon: Icons.payments_outlined,
+                  label: 'Tổng Tiền Điện',
+                  value: stats.totalCost.toStringAsFixed(0),
+                  valueColor: Colors.indigo,
+                ),
               ),
             ],
           ),
-          AppSpacing.h12,
+          SizedBox(height: sizeClass == ScreenSizeClass.compact 
+              ? AppSpacing.md 
+              : AppSpacing.lg),
           Row(
             children: [
-              const Icon(Icons.check_box_outlined, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                '${stats.isDecrease ? 'Giảm' : 'Tăng'} ${stats.deltaCost.toStringAsFixed(0)} So Với Tháng Trước',
-                style: AppTypography.bodyM.copyWith(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+              Icon(
+                Icons.check_box_outlined,
+                size: sizeClass == ScreenSizeClass.expanded ? 20 : 18,
+              ),
+              SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  '${stats.isDecrease ? 'Giảm' : 'Tăng'} ${stats.deltaCost.toStringAsFixed(0)} So Với Tháng Trước',
+                  style: context.responsiveBodyM.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -135,12 +153,14 @@ class _StatsCard extends StatelessWidget {
 
 class _StatTile extends StatelessWidget {
   const _StatTile({
+    required this.context,
     required this.icon,
     required this.label,
     required this.value,
     required this.valueColor,
   });
 
+  final BuildContext context;
   final IconData icon;
   final String label;
   final String value;
@@ -148,32 +168,47 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.primarySoft,
-            child: Icon(icon, color: AppColors.primary),
+    final sizeClass = context.screenSizeClass;
+    final avatarRadius = sizeClass == ScreenSizeClass.expanded 
+        ? 24.0 
+        : sizeClass == ScreenSizeClass.medium
+            ? 22.0
+            : 20.0;
+    
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: avatarRadius,
+          backgroundColor: AppColors.primarySoft,
+          child: Icon(
+            icon,
+            color: AppColors.primary,
+            size: avatarRadius * 0.9,
           ),
-          const SizedBox(width: 10),
-          Column(
+        ),
+        SizedBox(width: sizeClass == ScreenSizeClass.compact 
+            ? AppSpacing.sm 
+            : AppSpacing.md),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: AppTypography.bodyM.copyWith(fontSize: 14),
+                style: context.responsiveBodyM,
               ),
+              SizedBox(height: AppSpacing.xs),
               Text(
                 value,
-                style: AppTypography.titleM.copyWith(
+                style: context.responsiveTitleM.copyWith(
                   color: valueColor,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
-          )
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -185,23 +220,27 @@ class _DistributionChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
     final total = stats.breakdown.fold<double>(0, (sum, item) => sum + item.value);
+    final chartHeight = sizeClass == ScreenSizeClass.expanded 
+        ? 260.0 
+        : sizeClass == ScreenSizeClass.medium
+            ? 240.0
+            : 220.0;
+    final padding = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.xl 
+        : AppSpacing.lg;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return AppCard(
+      padding: EdgeInsets.all(padding),
       child: Column(
         children: [
           SizedBox(
-            height: 220,
+            height: chartHeight,
             child: PieChart(
               PieChartData(
                 sectionsSpace: 3,
-                centerSpaceRadius: 36,
+                centerSpaceRadius: sizeClass == ScreenSizeClass.expanded ? 44 : 36,
                 startDegreeOffset: -90,
                 sections: stats.breakdown
                     .map(
@@ -209,11 +248,11 @@ class _DistributionChart extends StatelessWidget {
                         value: item.value,
                         color: item.color,
                         title: '${((item.value / total) * 100).round()}%',
-                        radius: 80,
-                        titleStyle: const TextStyle(
+                        radius: sizeClass == ScreenSizeClass.expanded ? 90 : 80,
+                        titleStyle: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontSize: sizeClass == ScreenSizeClass.expanded ? 14 : 12,
                         ),
                       ),
                     )
@@ -221,14 +260,21 @@ class _DistributionChart extends StatelessWidget {
               ),
             ),
           ),
-          AppSpacing.h12,
+          SizedBox(height: sizeClass == ScreenSizeClass.compact 
+              ? AppSpacing.md 
+              : AppSpacing.lg),
           Wrap(
             alignment: WrapAlignment.center,
-            spacing: 16,
-            runSpacing: 8,
+            spacing: sizeClass == ScreenSizeClass.expanded 
+                ? AppSpacing.xl 
+                : AppSpacing.lg,
+            runSpacing: sizeClass == ScreenSizeClass.compact 
+                ? AppSpacing.sm 
+                : AppSpacing.md,
             children: stats.breakdown
                 .map(
                   (item) => _LegendItem(
+                    context: context,
                     color: item.color,
                     label: item.label,
                   ),
@@ -242,28 +288,36 @@ class _DistributionChart extends StatelessWidget {
 }
 
 class _LegendItem extends StatelessWidget {
-  const _LegendItem({required this.color, required this.label});
+  const _LegendItem({
+    required this.context,
+    required this.color,
+    required this.label,
+  });
 
+  final BuildContext context;
   final Color color;
   final String label;
 
   @override
   Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final dotSize = sizeClass == ScreenSizeClass.expanded ? 14.0 : 12.0;
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: dotSize,
+          height: dotSize,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: AppSpacing.xs),
         Text(
           label,
-          style: AppTypography.bodyM.copyWith(fontSize: 14),
+          style: context.responsiveBodyM,
         ),
       ],
     );

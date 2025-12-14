@@ -2,30 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/presentation/add_name_screen.dart';
-import '../../features/auth/presentation/login_phone_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/login_success_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
-import '../../features/auth/presentation/security_pin_screen.dart';
 import '../../features/analysis/presentation/analysis_screen.dart';
 import '../../features/analysis/presentation/analysis_detail_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../features/devices/presentation/devices_screen.dart';
-import '../../features/devices/presentation/room_detail_screen.dart';
+import '../../features/devices/presentation/device_detail_screen.dart';
+import '../../features/devices/presentation/gate_room_screen.dart';
+import '../../features/devices/presentation/room_devices_screen.dart';
+import '../../features/devices/presentation/room_list_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../shared/layout/app_shell.dart';
 
 enum AppRoute {
   onboarding,
   login,
-  loginPhone,
-  pin,
   phoneSuccess,
-  addName,
   dashboard,
   devices,
   roomDetail,
+  deviceDetail,
   analysis,
   analysisDetail,
   settings
@@ -51,28 +48,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             const NoTransitionPage(child: LoginScreen()),
       ),
       GoRoute(
-        path: '/login-phone',
-        name: AppRoute.loginPhone.name,
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: LoginPhoneScreen()),
-      ),
-      GoRoute(
-        path: '/pin',
-        name: AppRoute.pin.name,
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: SecurityPinScreen()),
-      ),
-      GoRoute(
-        path: '/phone-success',
+        path: '/login-success',
         name: AppRoute.phoneSuccess.name,
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: LoginSuccessScreen()),
-      ),
-      GoRoute(
-        path: '/add-name',
-        name: AppRoute.addName.name,
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: AddNameScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -94,16 +73,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/devices',
                 name: AppRoute.devices.name,
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: DevicesScreen()),
+                    const NoTransitionPage(child: RoomListScreen()),
                 routes: [
                   GoRoute(
                     path: ':roomId',
                     name: AppRoute.roomDetail.name,
-                    pageBuilder: (context, state) => NoTransitionPage(
-                      child: RoomDetailScreen(
-                        roomId: state.pathParameters['roomId'] ?? '',
+                    pageBuilder: (context, state) {
+                      final roomId = state.pathParameters['roomId'] ?? '';
+                      // Use GateRoomScreen for gate room, RoomDevicesScreen for others
+                      if (roomId == 'gate') {
+                        return const NoTransitionPage(child: GateRoomScreen());
+                      }
+                      return NoTransitionPage(
+                        child: RoomDevicesScreen(roomId: roomId),
+                      );
+                    },
+                    routes: [
+                      GoRoute(
+                        path: 'device/:deviceId',
+                        name: AppRoute.deviceDetail.name,
+                        pageBuilder: (context, state) => NoTransitionPage(
+                          child: DeviceDetailScreen(
+                            roomId: state.pathParameters['roomId'] ?? '',
+                            deviceId: state.pathParameters['deviceId'] ?? '',
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

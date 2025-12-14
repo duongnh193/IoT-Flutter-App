@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/layout/auth_scaffold.dart';
 import '../../../shared/widgets/buttons/app_buttons.dart';
+import '../providers/auth_controller.dart';
 
-class SecurityPinScreen extends StatefulWidget {
+class SecurityPinScreen extends ConsumerStatefulWidget {
   const SecurityPinScreen({super.key});
 
   @override
-  State<SecurityPinScreen> createState() => _SecurityPinScreenState();
+  ConsumerState<SecurityPinScreen> createState() => _SecurityPinScreenState();
 }
 
-class _SecurityPinScreenState extends State<SecurityPinScreen> {
+class _SecurityPinScreenState extends ConsumerState<SecurityPinScreen> {
   static const _pinLength = 6;
   final List<TextEditingController> _controllers =
       List.generate(_pinLength, (_) => TextEditingController());
@@ -44,16 +47,55 @@ class _SecurityPinScreenState extends State<SecurityPinScreen> {
 
   String get _pin => _controllers.map((c) => c.text).join();
 
+  Future<void> _handleVerifyOTP(
+    BuildContext context,
+    AuthController authController,
+  ) async {
+    if (_pin.length != _pinLength) return;
+
+    try {
+      await authController.verifyOTP(_pin);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mã OTP không đúng: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      // Clear PIN on error
+      for (final controller in _controllers) {
+        controller.clear();
+      }
+      _focusNodes[0].requestFocus();
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authController = ref.watch(authControllerProvider.notifier);
+    final authState = ref.watch(authControllerProvider);
+
+    // Navigate on successful verification
+    authState.whenData((user) {
+      if (user != null && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.pushReplacementNamed(AppRoute.phoneSuccess.name);
+          }
+        });
+      }
+    });
+
     return AuthScaffold(
       title: 'Security Pin',
       panelHeightFactor: 0.72,
       contentTopPaddingFactor: 0.1,
       waveOffset: -10,
       panelBuilder: (panelConstraints) {
-        final maxWidth = panelConstraints.maxWidth > 320
-            ? 320.0
+        final maxWidth = panelConstraints.maxWidth > AppConstants.authFieldMaxWidth
+            ? AppConstants.authFieldMaxWidth
             : panelConstraints.maxWidth * 0.9;
 
         return Column(
@@ -71,10 +113,10 @@ class _SecurityPinScreenState extends State<SecurityPinScreen> {
                 children: List.generate(_pinLength, (index) {
                   return Padding(
                     padding: EdgeInsets.only(
-                      right: index == _pinLength - 1 ? 0 : 12,
+                      right: index == _pinLength - 1 ? 0 : AppSpacing.md,
                     ),
                     child: SizedBox(
-                      width: 42,
+                      width: AppConstants.authPinBoxSize,
                       child: TextField(
                         controller: _controllers[index],
                         focusNode: _focusNodes[index],
@@ -87,14 +129,14 @@ class _SecurityPinScreenState extends State<SecurityPinScreen> {
                         maxLength: 1,
                         decoration: InputDecoration(
                           counterText: '',
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+                            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
                           ),
                           filled: true,
                           fillColor: Colors.white,
@@ -108,25 +150,26 @@ class _SecurityPinScreenState extends State<SecurityPinScreen> {
             ),
             AppSpacing.h32,
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 220, minHeight: 48),
+              constraints: const BoxConstraints(maxWidth: 220, minHeight: AppConstants.authButtonMinHeight),
               child: AppPrimaryButton(
-                label: 'Accept',
+                label: authState.isLoading ? 'Đang xác thực...' : 'Xác nhận',
                 background: AppColors.primary,
-                onPressed: () {
-                  if (_pin.length == _pinLength) {
-                    context.pushReplacementNamed(AppRoute.phoneSuccess.name);
-                  }
-                },
+                onPressed: (authState.isLoading || _pin.length != _pinLength)
+                    ? null
+                    : () => _handleVerifyOTP(context, authController),
               ),
             ),
             AppSpacing.h12,
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 220, minHeight: 46),
+              constraints: const BoxConstraints(maxWidth: 220, minHeight: AppConstants.authButtonMinHeight),
               child: AppPrimaryButton(
-                label: 'Send Again',
+                label: 'Gửi lại mã',
                 background: AppColors.primarySoft,
                 foreground: AppColors.textPrimary,
-                onPressed: () {},
+                onPressed: () {
+                  // Navigate back to phone screen to resend
+                  context.pop();
+                },
               ),
             ),
           ],

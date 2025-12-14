@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_typography.dart';
-import '../../../shared/layout/auth_scaffold.dart';
+import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/responsive_typography.dart';
+import '../../../shared/layout/app_scaffold.dart';
+import '../../../shared/layout/content_scaffold.dart';
 import '../providers/room_provider.dart';
 import 'widgets/room_card.dart';
 
@@ -12,53 +14,68 @@ class DevicesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rooms = ref.watch(roomListProvider);
-
-    return AuthScaffold(
+    final roomsAsync = ref.watch(roomListProvider);
+    final sizeClass = context.screenSizeClass;
+    
+    return ContentScaffold(
       title: 'Chọn Phòng',
-      panelHeightFactor: 0.8,
-      contentTopPaddingFactor: 0.08,
-      showWave: false,
-      panelScrollable: false,
-      horizontalPaddingFactor: 0.08,
-      panelBuilder: (constraints) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 200,
-              childAspectRatio: 3 / 3.6,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+      panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
+      horizontalPaddingFactor: 0.06,
+      scrollable: true,
+      body: (context, constraints) {
+        return roomsAsync.when(
+          data: (rooms) => _buildRoomsGrid(context, constraints, rooms),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.xxl),
+              child: CircularProgressIndicator(),
             ),
-            itemCount: rooms.length,
-            itemBuilder: (_, index) {
-              final room = rooms[index];
-              return RoomCard(
-                room: room,
-                onTap: () => context.push('/devices/${room.id}'),
-              );
-            },
+          ),
+          error: (error, stack) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Text(
+                'Lỗi: $error',
+                style: context.responsiveBodyM,
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         );
       },
-      titleWidget: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Chọn Phòng',
-              style: AppTypography.headlineL,
-            ),
-            const SizedBox(height: 8),
-            const Icon(Icons.home_work_outlined,
-                size: 56, color: Colors.black87),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildRoomsGrid(
+    BuildContext context,
+    BoxConstraints constraints,
+    List rooms,
+  ) {
+    final sizeClass = context.screenSizeClass;
+    final maxCrossAxisExtent = context.responsiveGridMaxCrossAxisExtent;
+    final crossAxisSpacing = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.lg 
+        : AppSpacing.md;
+    final mainAxisSpacing = crossAxisSpacing;
+    final aspectRatio = context.responsiveGridChildAspectRatio;
+    
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: maxCrossAxisExtent,
+        childAspectRatio: aspectRatio,
+        crossAxisSpacing: crossAxisSpacing,
+        mainAxisSpacing: mainAxisSpacing,
       ),
+      itemCount: rooms.length,
+      itemBuilder: (_, index) {
+        final room = rooms[index];
+        return RoomCard(
+          room: room,
+          onTap: () => context.push('/devices/${room.id}'),
+        );
+      },
     );
   }
 }

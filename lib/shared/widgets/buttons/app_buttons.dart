@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_spacing.dart';
+
 class AppPrimaryButton extends StatelessWidget {
   const AppPrimaryButton({
     super.key,
@@ -10,7 +12,7 @@ class AppPrimaryButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color? background;
   final Color? foreground;
 
@@ -41,11 +43,12 @@ class AppPrimaryButton extends StatelessWidget {
             return 3;
           }),
           shadowColor: WidgetStateProperty.all(bg.withAlpha(76)),
-          padding:
-              WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 16)),
+          padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          ),
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
             ),
           ),
           textStyle: WidgetStateProperty.all(
@@ -74,7 +77,7 @@ class AppActionButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Widget leading;
   final Color background;
   final Color textColor;
@@ -91,7 +94,10 @@ class AppActionButton extends StatelessWidget {
       child: OutlinedButton(
         style: ButtonStyle(
           padding: WidgetStateProperty.all(
-            const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            const EdgeInsets.symmetric(
+              vertical: AppSpacing.md + 2,
+              horizontal: AppSpacing.md,
+            ),
           ),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.pressed)) {
@@ -116,7 +122,7 @@ class AppActionButton extends StatelessWidget {
           }),
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius - 2),
             ),
           ),
           textStyle: WidgetStateProperty.all(
@@ -131,7 +137,7 @@ class AppActionButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             leading,
-            const SizedBox(width: 12),
+            AppSpacing.w12,
             Text(
               label,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(

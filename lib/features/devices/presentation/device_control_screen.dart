@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../shared/layout/app_scaffold.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
 
@@ -42,10 +43,26 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
   @override
   Widget build(BuildContext context) {
     final notifier = ref.read(deviceControllerProvider.notifier);
-    final isOn = ref.watch(deviceControllerProvider).firstWhere(
+    final devicesAsync = ref.watch(deviceControllerProvider);
+    final isOn = devicesAsync.when(
+      data: (devices) {
+        final device = devices.firstWhere(
           (d) => d.id == widget.device.id,
           orElse: () => widget.device,
-        ).isOn;
+        );
+        return device.isOn;
+      },
+      loading: () => widget.device.isOn,
+      error: (_, __) => widget.device.isOn,
+    );
+
+    final sizeClass = context.screenSizeClass;
+    final spacing = sizeClass == ScreenSizeClass.compact 
+        ? AppSpacing.md 
+        : AppSpacing.lg;
+    final verticalSpacing = sizeClass == ScreenSizeClass.compact 
+        ? AppSpacing.md 
+        : AppSpacing.xl;
 
     return Scaffold(
       body: Container(
@@ -61,31 +78,36 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing, 
+              vertical: sizeClass == ScreenSizeClass.compact ? 8 : 12,
+            ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _TopBar(title: widget.device.name),
-                AppSpacing.h16,
+                SizedBox(height: spacing),
                 _ModeSelector(
                   modes: modes,
                   selected: modeIndex,
                   onChanged: (i) => setState(() => modeIndex = i),
                 ),
-                AppSpacing.h20,
+                SizedBox(height: verticalSpacing),
                 _TempGauge(
                   value: temp,
                   onChanged: (v) => setState(() => temp = v),
                 ),
-                AppSpacing.h20,
+                SizedBox(height: verticalSpacing),
                 _SpeedPowerRow(
                   speed: speed,
                   onSpeedChanged: (v) => setState(() => speed = v),
                   isOn: isOn,
                   onTogglePower: () => notifier.toggle(widget.device.id),
                 ),
-                AppSpacing.h16,
+                SizedBox(height: spacing),
                 _TempSliderPanel(
                   value: temp,
                   onChanged: (v) => setState(() => temp = v),
@@ -193,17 +215,25 @@ class _TempGauge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (value - 16) / 14; // 16 -> 30
+    // Make size responsive to avoid overflow
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final size = screenWidth < 400 || screenHeight < 700
+        ? 180.0  // Much smaller on compact screens
+        : screenWidth < 450
+            ? 210.0  // Medium on small screens
+            : 240.0;  // Full size on larger screens
 
     return Center(
       child: SizedBox(
-        height: 240,
-        width: 240,
+        height: size,
+        width: size,
         child: Stack(
           alignment: Alignment.center,
           children: [
             SizedBox(
-              height: 210,
-              width: 210,
+              height: size * 0.875,
+              width: size * 0.875,
               child: CircularProgressIndicator(
                 value: percent.clamp(0.0, 1.0),
                 strokeWidth: 16,
@@ -214,8 +244,8 @@ class _TempGauge extends StatelessWidget {
               ),
             ),
             Container(
-              height: 140,
-              width: 140,
+              height: size * 0.583,
+              width: size * 0.583,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -266,6 +296,7 @@ class _SpeedPowerRow extends StatelessWidget {
         Expanded(
           child: _CardContainer(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Speed',
@@ -310,6 +341,7 @@ class _SpeedPowerRow extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Power',
@@ -375,6 +407,7 @@ class _TempSliderPanelState extends State<_TempSliderPanel> {
   Widget build(BuildContext context) {
     return _CardContainer(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Temp', style: AppTypography.bodyM.copyWith(color: Colors.white)),

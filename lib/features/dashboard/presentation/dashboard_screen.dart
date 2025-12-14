@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/constants/app_typography.dart';
-import '../../../shared/layout/auth_scaffold.dart';
+import '../../../core/constants/responsive_typography.dart';
+import '../../../shared/layout/app_scaffold.dart';
+import '../../../shared/layout/content_scaffold.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../../auth/providers/auth_session_provider.dart';
+import '../providers/environment_provider.dart';
 import '../widgets/dashboard_cards.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -11,124 +15,315 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AuthScaffold(
-      title: 'Hi, TEST USER',
-      panelHeightFactor: 0.8,
-      contentTopPaddingFactor: 0.08,
-      waveOffset: 0,
-      showWave: false,
-      panelScrollable: true,
-      panelOffset: 0,
+    final sizeClass = context.screenSizeClass;
+    final currentUserAsync = ref.watch(currentUserProvider);
+    
+    return ContentScaffold(
+      title: 'Trang chủ',
+      panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
       horizontalPaddingFactor: 0.06,
-      panelShadow: const [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 10,
-          offset: Offset(0, -2),
+      scrollable: true,
+      titleWidget: currentUserAsync.when(
+        data: (user) => _TitleSection(
+          context: context,
+          userName: user?.displayName ?? 'User',
         ),
-      ],
-      panelBuilder: (panelConstraints) {
-        const chipSpacing = 6.0;
-        final chipWidth = (panelConstraints.maxWidth - chipSpacing * 8) / 3;
+        loading: () => _TitleSection(
+          context: context,
+          userName: '...',
+        ),
+        error: (_, __) => _TitleSection(
+          context: context,
+          userName: 'User',
+        ),
+      ),
+      body: (context, constraints) {
+        final spacing = sizeClass == ScreenSizeClass.expanded 
+            ? AppSpacing.xl 
+            : AppSpacing.lg;
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppSpacing.h16,
-            Row(
-              children: [
-                DashboardShortcutCard(
-                  icon: Icons.exit_to_app,
-                  title: 'Rời nhà',
-                  background: AppColors.coralSoft,
-                  onTap: () {},
-                ),
-                const SizedBox(width: 12),
-                DashboardShortcutCard(
-                  icon: Icons.home_outlined,
-                  title: 'Về nhà',
-                  background: AppColors.skySoft,
-                  onTap: () {},
-                ),
-              ],
-            ),
-            AppSpacing.h20,
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.borderSoft),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  )
-                ],
-              ),
+            // Shortcut cards in white card container
+            AppCard(
+              padding: EdgeInsets.all(spacing),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  DashboardStatusChip(
-                    icon: Icons.device_thermostat,
-                    iconAsset: 'assets/icons/temperature.svg',
-                    title: 'Nhiệt độ',
-                    value: '28°C',
-                    background: AppColors.white,
-                    width: chipWidth,
+                  Expanded(
+                    child: DashboardShortcutCard(
+                      icon: Icons.exit_to_app,
+                      title: 'Rời nhà',
+                      background: AppColors.coralSoft,
+                      onTap: () {},
+                    ),
                   ),
-                  const SizedBox(width: chipSpacing),
-                  DashboardStatusChip(
-                    icon: Icons.water_drop_outlined,
-                    iconAsset: 'assets/icons/humidity.svg',
-                    title: 'Độ ẩm',
-                    value: '70%',
-                    background: AppColors.white,
-                    width: chipWidth,
-                  ),
-                  const SizedBox(width: chipSpacing),
-                  DashboardStatusChip(
-                    icon: Icons.eco_outlined,
-                    iconAsset: 'assets/icons/air.svg',
-                    title: 'Không khí',
-                    value: 'Trong lành',
-                    background: AppColors.white,
-                    width: chipWidth,
+                  SizedBox(width: spacing),
+                  Expanded(
+                    child: DashboardShortcutCard(
+                      icon: Icons.home_outlined,
+                      title: 'Về nhà',
+                      background: AppColors.skySoft,
+                      onTap: () {},
+                    ),
                   ),
                 ],
               ),
+            ),
+            
+            SizedBox(height: spacing),
+            
+            // Status chips in white card container - responsive grid
+            _StatusChipsSection(
+              constraints: constraints,
             ),
           ],
         );
       },
-      titleWidget: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hi, TEST USER',
-                  style: AppTypography.headlineL,
+    );
+  }
+}
+
+/// Custom title section with user greeting
+class _TitleSection extends StatelessWidget {
+  const _TitleSection({
+    required this.context,
+    required this.userName,
+  });
+
+  final BuildContext context;
+  final String userName;
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final avatarRadius = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.cardRadius + 8 
+        : sizeClass == ScreenSizeClass.medium
+            ? AppSpacing.cardRadius + 6
+            : AppSpacing.cardRadius + 4;
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hi, ${userName.toUpperCase()}',
+                style: context.responsiveHeadlineL,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: sizeClass == ScreenSizeClass.compact 
+                  ? AppSpacing.xs 
+                  : AppSpacing.sm),
+              Text(
+                'Welcome back!',
+                style: context.responsiveBodyM.copyWith(
+                  color: AppColors.textSecondary,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Welcome back!',
-                  style: AppTypography.bodyM.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: AppColors.primary),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
+        SizedBox(width: AppSpacing.md),
+        CircleAvatar(
+          radius: avatarRadius,
+          backgroundColor: Colors.white,
+          child: Icon(
+            Icons.person,
+            color: AppColors.primary,
+            size: avatarRadius * 0.7,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusChipsSection extends ConsumerWidget {
+  const _StatusChipsSection({
+    required this.constraints,
+  });
+
+  final BoxConstraints constraints;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sizeClass = context.screenSizeClass;
+    final chipPadding = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.xl 
+        : sizeClass == ScreenSizeClass.medium
+            ? AppSpacing.lg
+            : AppSpacing.md;
+    
+    final chipSpacing = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.lg 
+        : sizeClass == ScreenSizeClass.medium
+            ? AppSpacing.md
+            : AppSpacing.sm;
+    
+    final chipCount = sizeClass == ScreenSizeClass.expanded ? 4 : 3;
+    
+    // Calculate chip width from available width
+    final availableWidth = constraints.maxWidth;
+    final totalPadding = chipPadding * 2;
+    final totalSpacing = chipSpacing * (chipCount - 1);
+    final chipWidth = (availableWidth - totalPadding - totalSpacing) / chipCount;
+    
+    // Watch environment data from Firebase
+    final envAsync = ref.watch(environmentProvider);
+    
+    return AppCard(
+      padding: EdgeInsets.all(chipPadding),
+      child: envAsync.when(
+        data: (env) {
+          // Format temperature
+          final tempValue = env.temperature != null
+              ? '${env.temperature!.round()}°C'
+              : '--°C';
+          
+          // Format humidity
+          final humValue = env.humidity != null
+              ? '${env.humidity!.round()}%'
+              : '--%';
+          
+          // Air quality (with fallback)
+          final airValue = env.airQuality ?? 'Trong lành';
+          
+          // Light level (with fallback)
+          final lightValue = env.lightLevel ?? 'Đủ sáng';
+          
+          return Wrap(
+            spacing: chipSpacing,
+            runSpacing: chipSpacing,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              DashboardStatusChip(
+                icon: Icons.device_thermostat,
+                iconAsset: 'assets/icons/temperature.svg',
+                title: 'Nhiệt độ',
+                value: tempValue,
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              DashboardStatusChip(
+                icon: Icons.water_drop_outlined,
+                iconAsset: 'assets/icons/humidity.svg',
+                title: 'Độ ẩm',
+                value: humValue,
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              DashboardStatusChip(
+                icon: Icons.eco_outlined,
+                iconAsset: 'assets/icons/air.svg',
+                title: 'Không khí',
+                value: airValue,
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              if (sizeClass == ScreenSizeClass.expanded)
+                DashboardStatusChip(
+                  icon: Icons.wb_sunny_outlined,
+                  iconAsset: 'assets/icons/bright.svg',
+                  title: 'Ánh sáng',
+                  value: lightValue,
+                  background: AppColors.white,
+                  width: chipWidth,
+                ),
+            ],
+          );
+        },
+        loading: () {
+          // Show loading placeholders
+          return Wrap(
+            spacing: chipSpacing,
+            runSpacing: chipSpacing,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              DashboardStatusChip(
+                icon: Icons.device_thermostat,
+                iconAsset: 'assets/icons/temperature.svg',
+                title: 'Nhiệt độ',
+                value: '...',
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              DashboardStatusChip(
+                icon: Icons.water_drop_outlined,
+                iconAsset: 'assets/icons/humidity.svg',
+                title: 'Độ ẩm',
+                value: '...',
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              DashboardStatusChip(
+                icon: Icons.eco_outlined,
+                iconAsset: 'assets/icons/air.svg',
+                title: 'Không khí',
+                value: '...',
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              if (sizeClass == ScreenSizeClass.expanded)
+                DashboardStatusChip(
+                  icon: Icons.wb_sunny_outlined,
+                  iconAsset: 'assets/icons/bright.svg',
+                  title: 'Ánh sáng',
+                  value: '...',
+                  background: AppColors.white,
+                  width: chipWidth,
+                ),
+            ],
+          );
+        },
+        error: (error, stack) {
+          // Show error placeholders with fallback values
+          return Wrap(
+            spacing: chipSpacing,
+            runSpacing: chipSpacing,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              DashboardStatusChip(
+                icon: Icons.device_thermostat,
+                iconAsset: 'assets/icons/temperature.svg',
+                title: 'Nhiệt độ',
+                value: '28°C',
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              DashboardStatusChip(
+                icon: Icons.water_drop_outlined,
+                iconAsset: 'assets/icons/humidity.svg',
+                title: 'Độ ẩm',
+                value: '70%',
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              DashboardStatusChip(
+                icon: Icons.eco_outlined,
+                iconAsset: 'assets/icons/air.svg',
+                title: 'Không khí',
+                value: 'Trong lành',
+                background: AppColors.white,
+                width: chipWidth,
+              ),
+              if (sizeClass == ScreenSizeClass.expanded)
+                DashboardStatusChip(
+                  icon: Icons.wb_sunny_outlined,
+                  iconAsset: 'assets/icons/bright.svg',
+                  title: 'Ánh sáng',
+                  value: 'Đủ sáng',
+                  background: AppColors.white,
+                  width: chipWidth,
+                ),
+            ],
+          );
+        },
       ),
     );
   }

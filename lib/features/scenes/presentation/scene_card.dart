@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/responsive_typography.dart';
+import '../../../shared/layout/app_scaffold.dart';
 import '../models/scene.dart';
 
 class SceneCard extends StatelessWidget {
@@ -14,57 +18,76 @@ class SceneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final sizeClass = context.screenSizeClass;
     final isActive = scene.isActive;
+    
+    final padding = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.xl 
+        : AppSpacing.lg;
+    
+    final iconSize = sizeClass == ScreenSizeClass.expanded ? 28.0 : 24.0;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       onTap: onToggle,
       child: Ink(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
           color: isActive
-              ? colorScheme.primary.withAlpha(20)
-              : colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(16),
+              ? AppColors.primarySoft
+              : Colors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
           border: Border.all(
             color: isActive
-                ? colorScheme.primary
-                : colorScheme.outlineVariant,
+                ? AppColors.primary
+                : AppColors.borderSoft,
+            width: isActive ? 2 : 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isActive ? 20 : 10),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Icon(
               Icons.auto_mode,
-              color: isActive ? colorScheme.primary : colorScheme.onSurface,
+              color: isActive ? AppColors.primary : AppColors.textPrimary,
+              size: iconSize,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: sizeClass == ScreenSizeClass.compact 
+                ? AppSpacing.md 
+                : AppSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     scene.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: context.responsiveTitleM.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: AppSpacing.xs),
                   Text(
                     scene.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ),
+            SizedBox(width: AppSpacing.sm),
             Switch(
               value: isActive,
               onChanged: (_) => onToggle(),
-              activeTrackColor: colorScheme.primary,
-              activeThumbColor: colorScheme.onPrimary,
+              activeTrackColor: AppColors.primary,
+              activeThumbColor: Colors.white,
             ),
           ],
         ),

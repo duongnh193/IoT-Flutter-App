@@ -43,24 +43,26 @@ class SettingsScreen extends StatelessWidget {
       panelHeightFactor: 0.8,
       contentTopPaddingFactor: 0.08,
       showWave: false,
-      panelScrollable: true,
+      panelScrollable: false,
       horizontalPaddingFactor: 0.06,
       panelBuilder: (_) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppSpacing.h12,
-            ...tiles.map(
-              (tile) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _SettingsTile(tile: tile),
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSpacing.h12,
+              ...tiles.map(
+                (tile) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _SettingsTile(tile: tile),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
       titleWidget: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         child: Column(
           children: [
             Text(
@@ -98,33 +100,35 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         onTap: () {},
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md + 2,
+            vertical: AppSpacing.md + 2,
+          ),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 22,
+                radius: AppSpacing.cardRadius + 6,
                 backgroundColor: AppColors.primarySoft,
                 child: Icon(tile.icon, color: AppColors.primary),
               ),
-              const SizedBox(width: 12),
+              AppSpacing.w12,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       tile.title,
-                      style: AppTypography.titleM.copyWith(fontSize: 17),
+                      style: AppTypography.titleM,
                     ),
-                    const SizedBox(height: 4),
+                    AppSpacing.h4,
                     Text(
                       tile.subtitle,
                       style: AppTypography.bodyM.copyWith(
-                        fontSize: 14,
                         color: AppColors.textSecondary,
                       ),
                     ),

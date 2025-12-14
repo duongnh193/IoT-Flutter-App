@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_typography.dart';
-import '../../providers/room_provider.dart';
+import '../../data/models/room_model.dart';
 
 class RoomCard extends StatelessWidget {
   const RoomCard({

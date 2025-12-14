@@ -112,7 +112,7 @@ class AuthScaffold extends StatelessWidget {
                       child: Padding(
                         padding: EdgeInsets.only(
                           top: contentTopPadding,
-                          bottom: 48,
+                          bottom: showWave ? 0 : 48, // Remove bottom padding when wave is shown
                           left: effectiveHorizontalPadding,
                           right: effectiveHorizontalPadding,
                         ),
@@ -121,7 +121,12 @@ class AuthScaffold extends StatelessWidget {
                             final content = panelBuilder(panelConstraints);
                             if (panelScrollable) {
                               return SingleChildScrollView(
-                                child: content,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: panelConstraints.maxHeight,
+                                  ),
+                                  child: content,
+                                ),
                               );
                             }
                             return content;

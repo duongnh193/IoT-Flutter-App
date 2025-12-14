@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum DeviceType { light, climate, camera, lock, speaker, sensor }
+import '../domain/entities/device_type.dart';
 
 class Device {
   const Device({
@@ -53,6 +53,14 @@ extension DeviceTypeX on DeviceType {
         return Icons.speaker_outlined;
       case DeviceType.sensor:
         return Icons.sensors;
+      case DeviceType.curtain:
+        return Icons.curtains;
+      case DeviceType.fan:
+        return Icons.toys;
+      case DeviceType.ac:
+        return Icons.ac_unit;
+      case DeviceType.socket:
+        return Icons.power_outlined;
     }
   }
 
@@ -70,6 +78,14 @@ extension DeviceTypeX on DeviceType {
         return 'Loa';
       case DeviceType.sensor:
         return 'Cảm biến';
+      case DeviceType.curtain:
+        return 'Rèm';
+      case DeviceType.fan:
+        return 'Quạt';
+      case DeviceType.ac:
+        return 'Điều hòa';
+      case DeviceType.socket:
+        return 'Ổ cắm';
     }
   }
 }
