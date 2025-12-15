@@ -8,6 +8,7 @@ import '../../../shared/layout/app_scaffold.dart';
 import '../../../shared/layout/content_scaffold.dart';
 import '../domain/entities/device_type.dart';
 import '../models/device.dart';
+import '../di/device_dependencies.dart';
 import '../providers/device_provider.dart';
 import '../providers/room_provider.dart';
 import 'widgets/device_card.dart';
@@ -239,9 +240,6 @@ class RoomDevicesScreen extends ConsumerWidget {
                   // Light control buttons
                   _LightControlButtons(
                     device: lightDevice,
-                    onToggle: () {
-                      ref.read(deviceControllerProvider.notifier).toggle(lightDevice.id);
-                    },
                   ),
                   
                   if (airPurifierDevice != null)
@@ -570,59 +568,84 @@ IconData _getDeviceIcon(Device device) {
 class _LightControlButtons extends ConsumerStatefulWidget {
   const _LightControlButtons({
     required this.device,
-    required this.onToggle,
   });
 
   final Device device;
-  final VoidCallback onToggle;
 
   @override
   ConsumerState<_LightControlButtons> createState() => _LightControlButtonsState();
 }
 
 class _LightControlButtonsState extends ConsumerState<_LightControlButtons> {
-  String _selectedMode = 'sáng'; // sáng, vừa, tắt, tiết kiệm
-  
+  int _mode = 0; // Current mode from hardware (0=tắt, 1=tiết kiệm, 2=vừa, 3=sáng)
+  int? _lastCommand; // Track last command to prevent duplicate updates
+  DateTime? _lastUpdateTime; // Track when we last updated via UI
+
   @override
   void initState() {
     super.initState();
-    // Initialize selected mode based on device state
-    if (!widget.device.isOn) {
-      _selectedMode = 'tắt';
-    }
+    // Initialize from device state
+    _mode = widget.device.isOn ? 3 : 0; // Default to sáng if on, tắt if off
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch Firebase data for this device
+    final deviceDataAsync = ref.watch(deviceDataProvider(widget.device.id));
+    
+    // Update mode when Firebase data changes (ignore for 2 seconds after UI update)
+    deviceDataAsync.whenData((data) {
+      if (data != null && mounted) {
+        final now = DateTime.now();
+        // Ignore stream updates for 2 seconds after manual update
+        if (_lastUpdateTime != null && 
+            now.difference(_lastUpdateTime!).inSeconds < 2) {
+          return; // Don't override optimistic update yet
+        }
+        
+        // mode: Giá trị từ phần cứng (hardware response) - dùng để hiển thị
+        final mode = data['mode'] as int? ?? 0;
+        final newMode = mode.clamp(0, 3);
+        
+        // Only update if value changed to avoid unnecessary rebuilds
+        if (newMode != _mode) {
+          setState(() {
+            _mode = newMode;
+          });
+        }
+      }
+    });
+
     final sizeClass = context.screenSizeClass;
     final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 56.0 : 48.0;
     final iconSize = sizeClass == ScreenSizeClass.expanded ? 24.0 : 20.0;
     final fontSize = sizeClass == ScreenSizeClass.expanded ? 14.0 : 13.0;
 
+    // Define modes: 0=tắt, 1=tiết kiệm, 2=vừa, 3=sáng
     final modes = [
       _LightMode(
-        id: 'sáng',
+        id: 3,
         label: 'sáng',
         icon: Icons.wb_sunny,
-        isActive: _selectedMode == 'sáng',
+        isActive: _mode == 3,
       ),
       _LightMode(
-        id: 'vừa',
+        id: 2,
         label: 'vừa',
         icon: Icons.wb_twilight,
-        isActive: _selectedMode == 'vừa',
+        isActive: _mode == 2,
       ),
       _LightMode(
-        id: 'tắt',
+        id: 0,
         label: 'Tắt',
         icon: Icons.remove,
-        isActive: _selectedMode == 'tắt',
+        isActive: _mode == 0,
       ),
       _LightMode(
-        id: 'tiết kiệm',
+        id: 1,
         label: 'tiết kiệm',
         icon: Icons.eco_outlined,
-        isActive: _selectedMode == 'tiết kiệm',
+        isActive: _mode == 1,
       ),
     ];
 
@@ -637,19 +660,38 @@ class _LightControlButtonsState extends ConsumerState<_LightControlButtons> {
           height: buttonHeight,
           iconSize: iconSize,
           fontSize: fontSize,
-          onTap: () {
-            setState(() {
-              _selectedMode = mode.id;
-              if (mode.id == 'tắt' && widget.device.isOn) {
-                widget.onToggle();
-              } else if (mode.id != 'tắt' && !widget.device.isOn) {
-                widget.onToggle();
-              }
-            });
-          },
+          onTap: () => _handleModeChange(mode.id),
         );
       }).toList(),
     );
+  }
+
+  Future<void> _handleModeChange(int command) async {
+    // command: 0=tắt, 1=tiết kiệm, 2=vừa, 3=sáng
+    if (_lastCommand == command) return; // Prevent duplicate updates
+    
+    _lastCommand = command;
+    _lastUpdateTime = DateTime.now(); // Track update time
+    // Optimistic update - UI shows new mode immediately
+    setState(() {
+      _mode = command;
+    });
+    
+    final repository = ref.read(deviceRepositoryProvider);
+    try {
+      // Gửi 'command' lên Firebase (UI command) - phần cứng sẽ đọc và cập nhật 'mode'
+      await repository.updateLightCommand(widget.device.id, command);
+    } catch (e) {
+      // Revert on error
+      _lastCommand = null;
+      _lastUpdateTime = null;
+      if (mounted) {
+        // Revert will happen via stream (mode will update)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
   }
 }
 
@@ -661,7 +703,7 @@ class _LightMode {
     required this.isActive,
   });
 
-  final String id;
+  final int id; // 0=tắt, 1=tiết kiệm, 2=vừa, 3=sáng
   final String label;
   final IconData icon;
   final bool isActive;

@@ -17,6 +17,9 @@ abstract class DeviceRemoteDataSource {
   
   /// Update curtain position (0-100)
   Future<void> updateCurtainPosition(String deviceId, int position);
+
+  /// Update light command (0 = tắt, 1 = tiết kiệm, 2 = vừa, 3 = sáng)
+  Future<void> updateLightCommand(String deviceId, int command);
   
   /// Watch raw Firebase data for a specific device
   Stream<Map<dynamic, dynamic>?> watchDeviceData(String id);
@@ -85,6 +88,19 @@ class DeviceRemoteDataSourceImpl implements DeviceRemoteDataSource {
     } else {
       // Fallback to update method for other devices
       final updates = _firebaseDataSource.getCurtainPositionUpdates(deviceId, position);
+      await _firebaseDataSource.updateDevice('', updates);
+    }
+  }
+
+  @override
+  Future<void> updateLightCommand(String deviceId, int command) async {
+    // Use PUT (set) instead of PATCH (update) for firmware compatibility
+    final path = _firebaseDataSource.getLightCommandPath(deviceId);
+    if (path != null) {
+      await _firebaseDataSource.setLightCommand(path, command);
+    } else {
+      // Fallback to update method for other devices
+      final updates = _firebaseDataSource.getLightCommandUpdates(deviceId, command);
       await _firebaseDataSource.updateDevice('', updates);
     }
   }

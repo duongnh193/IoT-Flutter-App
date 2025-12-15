@@ -28,5 +28,8 @@ abstract class DeviceRepository {
 
   /// Update curtain position (0-100)
   Future<void> updateCurtainPosition(String deviceId, int position);
+
+  /// Update light command (0 = tắt, 1 = tiết kiệm, 2 = vừa, 3 = sáng)
+  Future<void> updateLightCommand(String deviceId, int command);
 }
 

@@ -127,5 +127,14 @@ class DeviceRepositoryImpl implements DeviceRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<void> updateLightCommand(String deviceId, int command) async {
+    try {
+      await remoteDataSource.updateLightCommand(deviceId, command);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 

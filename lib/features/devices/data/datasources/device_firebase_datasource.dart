@@ -57,7 +57,8 @@ class DeviceFirebaseDataSource {
   /// If devicePath is empty, updates are treated as root-level paths
   Future<void> updateDevice(String devicePath, Map<String, dynamic> updates) async {
     if (devicePath.isEmpty) {
-      // Multiple paths update (e.g., {'bedroom/curtain/position': 100, 'bedroom/curtain/target_pos': 100})
+      // Multiple paths update (e.g., {'bedroom/curtain/target_pos': 100})
+      // Note: Chỉ update 'target_pos' (UI command), không update 'position' (hardware response)
       await _database.update(updates);
     } else {
       // Single path update
@@ -73,8 +74,16 @@ class DeviceFirebaseDataSource {
 
   /// Set curtain position using PUT (for firmware compatibility)
   /// Uses set() instead of update() to send HTTP PUT request
-  Future<void> setCurtainPosition(String path, int position) async {
-    await _database.child(path).set(position);
+  /// Gửi 'target_pos' (UI command) lên Firebase, phần cứng sẽ đọc và cập nhật 'position'
+  Future<void> setCurtainPosition(String path, int targetPos) async {
+    await _database.child(path).set(targetPos);
+  }
+
+  /// Set light command using PUT (for firmware compatibility)
+  /// Uses set() instead of update() to send HTTP PUT request
+  /// Gửi 'command' (UI command) lên Firebase, phần cứng sẽ đọc và cập nhật 'mode'
+  Future<void> setLightCommand(String path, int command) async {
+    await _database.child(path).set(command);
   }
 
   /// Get Firebase path for fan command
@@ -87,11 +96,23 @@ class DeviceFirebaseDataSource {
     }
   }
 
-  /// Get Firebase path for curtain position
+  /// Get Firebase path for curtain target position (UI command)
+  /// Path này dùng để gửi 'target_pos' từ UI lên Firebase
   String? getCurtainPositionPath(String deviceId) {
     switch (deviceId) {
       case 'curtain-bedroom':
-        return 'bedroom/curtain/position';
+        return 'bedroom/curtain/target_pos'; // UI command path
+      default:
+        return null;
+    }
+  }
+
+  /// Get Firebase path for light command (UI command)
+  /// Path này dùng để gửi 'command' từ UI lên Firebase
+  String? getLightCommandPath(String deviceId) {
+    switch (deviceId) {
+      case 'light-living':
+        return 'living_room/light/command'; // UI command path
       default:
         return null;
     }
@@ -128,15 +149,15 @@ class DeviceFirebaseDataSource {
       // Curtain
       if (bedroom['curtain'] != null) {
         final curtain = bedroom['curtain'] as Map<dynamic, dynamic>;
-        // target_pos: Vị trí thực tế từ phần cứng (0-100)
-        // position: Command từ UI (không dùng để parse state)
-        final targetPos = curtain['target_pos'] as int? ?? 0;
+        // position: Vị trí thực tế từ phần cứng (hardware response) - dùng để hiển thị
+        // target_pos: Command từ UI (không dùng để parse state)
+        final position = curtain['position'] as int? ?? 0;
         devices.add(DeviceModel(
           id: 'curtain-bedroom',
           name: 'Rèm Cửa',
           type: DeviceType.curtain,
           room: 'Phòng ngủ',
-          isOn: targetPos > 0,
+          isOn: position > 0,
           power: 5.0,
         ));
       }
@@ -191,13 +212,15 @@ class DeviceFirebaseDataSource {
       // Light
       if (livingRoom['light'] != null) {
         final light = livingRoom['light'] as Map<dynamic, dynamic>;
-        final command = light['command'] as int? ?? 0;
+        // mode: Chế độ thực tế từ phần cứng (hardware response) - dùng để hiển thị
+        // command: Command từ UI (không dùng để parse state)
+        final mode = light['mode'] as int? ?? 0;
         devices.add(DeviceModel(
           id: 'light-living',
           name: 'Đèn trần',
           type: DeviceType.light,
           room: 'Phòng khách',
-          isOn: command > 0,
+          isOn: mode > 0,
           power: 42.0,
         ));
       }
@@ -223,14 +246,15 @@ class DeviceFirebaseDataSource {
   DeviceModel? _deviceModelFromFirebase(String id, Map<dynamic, dynamic> data) {
     switch (id) {
       case 'curtain-bedroom':
-        // target_pos: Vị trí thực tế từ phần cứng
-        final targetPos = data['target_pos'] as int? ?? 0;
+        // position: Vị trí thực tế từ phần cứng (hardware response) - dùng để hiển thị
+        // target_pos: Command từ UI (không dùng để parse state)
+        final position = data['position'] as int? ?? 0;
         return DeviceModel(
           id: id,
           name: 'Rèm Cửa',
           type: DeviceType.curtain,
           room: 'Phòng ngủ',
-          isOn: targetPos > 0,
+          isOn: position > 0,
           power: 5.0,
         );
       case 'fan-bedroom':
@@ -263,13 +287,15 @@ class DeviceFirebaseDataSource {
           power: 3.0,
         );
       case 'light-living':
-        final command = data['command'] as int? ?? 0;
+        // mode: Chế độ thực tế từ phần cứng (hardware response) - dùng để hiển thị
+        // command: Command từ UI (không dùng để parse state)
+        final mode = data['mode'] as int? ?? 0;
         return DeviceModel(
           id: id,
           name: 'Đèn trần',
           type: DeviceType.light,
           room: 'Phòng khách',
-          isOn: command > 0,
+          isOn: mode > 0,
           power: 42.0,
         );
       case 'air-purifier-living':
@@ -290,10 +316,10 @@ class DeviceFirebaseDataSource {
   Map<String, dynamic> getDeviceToggleUpdates(String deviceId, bool newState) {
     switch (deviceId) {
       case 'curtain-bedroom':
-        // Only update 'position' (command from UI)
-        // 'target_pos' will be updated by hardware based on actual position
+        // Chỉ update 'target_pos' (UI command) - phần cứng sẽ đọc và cập nhật 'position'
+        // Không được update 'position' từ UI (đây là giá trị từ hardware)
         return {
-          'bedroom/curtain/position': newState ? 100 : 0,
+          'bedroom/curtain/target_pos': newState ? 100 : 0,
         };
       case 'fan-bedroom':
         return {
@@ -311,6 +337,8 @@ class DeviceFirebaseDataSource {
           'living_room/door/command': newState ? 1 : 0,
         };
       case 'light-living':
+        // Không dùng toggle nữa, dùng updateLightCommand thay thế
+        // Chỉ update command nếu cần toggle đơn giản (0=tắt, 1=bật với command=1)
         return {
           'living_room/light/command': newState ? 1 : 0,
         };
@@ -336,12 +364,28 @@ class DeviceFirebaseDataSource {
     }
   }
 
-  /// Update curtain position (0-100)
-  Map<String, dynamic> getCurtainPositionUpdates(String deviceId, int position) {
+  /// Update curtain target position (0-100)
+  /// Trả về map để update 'target_pos' (UI command)
+  /// 'position' sẽ được phần cứng cập nhật dựa trên vị trí thực tế
+  Map<String, dynamic> getCurtainPositionUpdates(String deviceId, int targetPos) {
     switch (deviceId) {
       case 'curtain-bedroom':
         return {
-          'bedroom/curtain/position': position,
+          'bedroom/curtain/target_pos': targetPos, // UI command - phần cứng sẽ đọc
+        };
+      default:
+        return {};
+    }
+  }
+
+  /// Update light command (0 = tắt, 1 = tiết kiệm, 2 = vừa, 3 = sáng)
+  /// Trả về map để update 'command' (UI command)
+  /// 'mode' sẽ được phần cứng cập nhật dựa trên chế độ thực tế
+  Map<String, dynamic> getLightCommandUpdates(String deviceId, int command) {
+    switch (deviceId) {
+      case 'light-living':
+        return {
+          'living_room/light/command': command, // UI command - phần cứng sẽ đọc
         };
       default:
         return {};

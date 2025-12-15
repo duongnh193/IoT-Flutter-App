@@ -36,6 +36,7 @@ class _CurtainPanelState extends ConsumerState<CurtainPanel> {
     final deviceDataAsync = ref.watch(deviceDataProvider(widget.device.id));
     
     // Update position when Firebase data changes (only when not dragging)
+    // Đọc 'position' từ phần cứng (hardware response) để hiển thị trên UI
     deviceDataAsync.whenData((data) {
       if (data != null && !_isDragging && mounted) {
         final now = DateTime.now();
@@ -45,14 +46,15 @@ class _CurtainPanelState extends ConsumerState<CurtainPanel> {
           return; // Don't override optimistic update yet
         }
         
-        final targetPosValue = data['target_pos'];
-        int targetPos = 0;
-        if (targetPosValue is int) {
-          targetPos = targetPosValue;
-        } else if (targetPosValue is double) {
-          targetPos = targetPosValue.round();
+        // position: Giá trị từ phần cứng (hardware response) - dùng để hiển thị
+        final positionValue = data['position'];
+        int position = 0;
+        if (positionValue is int) {
+          position = positionValue;
+        } else if (positionValue is double) {
+          position = positionValue.round();
         }
-        final newPosition = targetPos.toDouble().clamp(0.0, 100.0);
+        final newPosition = position.toDouble().clamp(0.0, 100.0);
         
         // Only update if value changed to avoid unnecessary rebuilds
         if ((newPosition - _position).abs() > 0.5) {
@@ -135,6 +137,7 @@ class _CurtainPanelState extends ConsumerState<CurtainPanel> {
     
     final repository = ref.read(deviceRepositoryProvider);
     try {
+      // Gửi 'target_pos' lên Firebase (UI command) - phần cứng sẽ đọc và cập nhật 'position'
       await repository.updateCurtainPosition(widget.device.id, newPosition);
     } catch (e) {
       // Revert on error
