@@ -12,6 +12,7 @@ import '../di/device_dependencies.dart';
 import '../providers/device_provider.dart';
 import '../providers/room_provider.dart';
 import 'widgets/device_card.dart';
+import 'widgets/add_device_button.dart';
 import 'device_control_screen.dart';
 import 'device_detail_screen.dart';
 import 'gate_control_screen.dart';
@@ -189,13 +190,14 @@ class RoomDevicesScreen extends ConsumerWidget {
       horizontalPaddingFactor: 0.06,
       scrollable: true,
       titleWidget: _RoomHeader(room: room),
+      floatingActionButton: const AddDeviceButton(),
           body: (context, constraints) {
             final sectionSpacing = sizeClass == ScreenSizeClass.compact 
-                ? AppSpacing.md 
-                : AppSpacing.lg;
+                ? AppSpacing.lg 
+                : AppSpacing.xl;
             final dividerSpacing = sizeClass == ScreenSizeClass.compact 
-                ? AppSpacing.xl 
-                : AppSpacing.xxl;
+                ? AppSpacing.xxl 
+                : AppSpacing.xxl + AppSpacing.md;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,13 +290,14 @@ class RoomDevicesScreen extends ConsumerWidget {
       horizontalPaddingFactor: 0.06,
       scrollable: true,
       titleWidget: _RoomHeader(room: room),
+      floatingActionButton: const AddDeviceButton(),
       body: (context, constraints) {
         final sectionSpacing = sizeClass == ScreenSizeClass.compact 
-            ? AppSpacing.md 
-            : AppSpacing.lg;
+            ? AppSpacing.lg 
+            : AppSpacing.xl;
         final dividerSpacing = sizeClass == ScreenSizeClass.compact 
-            ? AppSpacing.xl 
-            : AppSpacing.xxl;
+            ? AppSpacing.xxl 
+            : AppSpacing.xxl + AppSpacing.md;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,8 +356,8 @@ class RoomDevicesScreen extends ConsumerWidget {
     List<Device> devices,
   ) {
     final sectionSpacing = sizeClass == ScreenSizeClass.compact 
-        ? AppSpacing.md 
-        : AppSpacing.lg;
+        ? AppSpacing.lg 
+        : AppSpacing.xl;
 
     return ContentScaffold(
       title: room.name,
@@ -363,6 +366,7 @@ class RoomDevicesScreen extends ConsumerWidget {
       horizontalPaddingFactor: 0.06,
       scrollable: true,
       titleWidget: _RoomHeader(room: room),
+      floatingActionButton: const AddDeviceButton(),
       body: (context, constraints) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -624,44 +628,56 @@ class _LightControlButtonsState extends ConsumerState<_LightControlButtons> {
     });
 
     final sizeClass = context.screenSizeClass;
-    final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 56.0 : 48.0;
+    final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 64.0 : 56.0;
     final iconSize = sizeClass == ScreenSizeClass.expanded ? 24.0 : 20.0;
     final fontSize = sizeClass == ScreenSizeClass.expanded ? 14.0 : 13.0;
 
-    // Define modes: 0=tắt, 1=tiết kiệm, 2=vừa, 3=sáng
+    // Define modes: 0=tắt, 1=tiết kiệm, 2=trung bình, 3=sáng mạnh
+    // Thứ tự hiển thị: tắt/tiết kiệm/trung bình/sáng mạnh (grid 2x2)
     final modes = [
-      _LightMode(
-        id: 3,
-        label: 'sáng',
-        icon: Icons.wb_sunny,
-        isActive: _mode == 3,
-      ),
-      _LightMode(
-        id: 2,
-        label: 'vừa',
-        icon: Icons.wb_twilight,
-        isActive: _mode == 2,
-      ),
       _LightMode(
         id: 0,
         label: 'Tắt',
-        icon: Icons.remove,
+        icon: Icons.power_off,
         isActive: _mode == 0,
       ),
       _LightMode(
         id: 1,
-        label: 'tiết kiệm',
+        label: 'Tiết kiệm',
         icon: Icons.eco_outlined,
         isActive: _mode == 1,
       ),
+      _LightMode(
+        id: 2,
+        label: 'Trung bình',
+        icon: Icons.wb_twilight,
+        isActive: _mode == 2,
+      ),
+      _LightMode(
+        id: 3,
+        label: 'Sáng mạnh',
+        icon: Icons.wb_sunny,
+        isActive: _mode == 3,
+      ),
     ];
 
-    return Wrap(
-      spacing: sizeClass == ScreenSizeClass.compact 
-          ? AppSpacing.sm 
-          : AppSpacing.md,
-      runSpacing: AppSpacing.sm,
-      children: modes.map((mode) {
+    // Grid 2x2 layout
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: sizeClass == ScreenSizeClass.compact 
+            ? AppSpacing.md 
+            : AppSpacing.lg,
+        mainAxisSpacing: sizeClass == ScreenSizeClass.compact 
+            ? AppSpacing.md 
+            : AppSpacing.lg,
+        childAspectRatio: 2.2, // Width/Height ratio for buttons
+      ),
+      itemCount: modes.length,
+      itemBuilder: (context, index) {
+        final mode = modes[index];
         return _LightButton(
           mode: mode,
           height: buttonHeight,
@@ -669,7 +685,7 @@ class _LightControlButtonsState extends ConsumerState<_LightControlButtons> {
           fontSize: fontSize,
           onTap: () => _handleModeChange(mode.id),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -735,8 +751,8 @@ class _LightButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final sizeClass = context.screenSizeClass;
     final padding = sizeClass == ScreenSizeClass.expanded 
-        ? EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md)
-        : EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm);
+        ? EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md)
+        : EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm);
 
     return GestureDetector(
       onTap: onTap,
@@ -751,7 +767,8 @@ class _LightButton extends StatelessWidget {
             width: mode.isActive ? 2 : 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
@@ -759,9 +776,10 @@ class _LightButton extends StatelessWidget {
               size: iconSize,
               color: mode.isActive ? Colors.white : AppColors.primary,
             ),
-            SizedBox(width: AppSpacing.xs),
+            SizedBox(height: AppSpacing.xs),
             Text(
               mode.label,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: fontSize,
                 fontWeight: mode.isActive ? FontWeight.w700 : FontWeight.w500,
@@ -934,3 +952,4 @@ class _PurifierButton {
   final IconData icon;
   final bool isActive;
 }
+

@@ -37,4 +37,7 @@ class AppColors {
   static const controlPurple = Color(0xFF7B2FF7);
   static const controlPurpleDark = Color(0xFF4C1B9B);
   static const controlPurpleSoft = Color(0xFFE7D6FF);
+  
+  // Card management
+  static const cardBlue = Color(0xFF6DB6FE);
 }

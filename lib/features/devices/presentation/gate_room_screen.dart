@@ -10,6 +10,7 @@ import '../domain/entities/device_type.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../providers/room_provider.dart';
+import 'widgets/add_device_button.dart';
 
 /// Gate room screen with special layout: device, access history, and card management
 class GateRoomScreen extends ConsumerWidget {
@@ -100,13 +101,14 @@ class GateRoomScreen extends ConsumerWidget {
           horizontalPaddingFactor: 0.06,
           scrollable: true,
           titleWidget: _GateHeader(room: gateRoom),
+          floatingActionButton: const AddDeviceButton(),
           body: (context, constraints) {
             final sectionSpacing = sizeClass == ScreenSizeClass.compact 
-                ? AppSpacing.md 
-                : AppSpacing.lg;
+                ? AppSpacing.lg 
+                : AppSpacing.xl;
             final dividerSpacing = sizeClass == ScreenSizeClass.compact 
-                ? AppSpacing.xl 
-                : AppSpacing.xxl;
+                ? AppSpacing.xxl 
+                : AppSpacing.xxl + AppSpacing.md;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,17 +357,12 @@ class _CardActionButtons extends StatelessWidget {
         Expanded(
           child: _CardActionButton(
             label: 'Thêm Thẻ',
-            backgroundColor: AppColors.roomSky,
+            backgroundColor: AppColors.cardBlue,
             icon: Icons.add,
             iconSize: iconSize,
             height: buttonHeight,
             onTap: () {
-              // TODO: Implement add card functionality
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Tính năng Thêm Thẻ đang phát triển')),
-                );
-              }
+              _showAddCardModal(context);
             },
           ),
         ),
@@ -378,12 +375,7 @@ class _CardActionButtons extends StatelessWidget {
             iconSize: iconSize,
             height: buttonHeight,
             onTap: () {
-              // TODO: Implement delete card functionality
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Tính năng Xoá Thẻ đang phát triển')),
-                );
-              }
+              _showDeleteCardModal(context);
             },
           ),
         ),
@@ -444,6 +436,479 @@ class _CardActionButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Show add card modal dialog
+void _showAddCardModal(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => const _AddCardModal(),
+  );
+}
+
+/// Add card modal dialog
+class _AddCardModal extends StatefulWidget {
+  const _AddCardModal();
+
+  @override
+  State<_AddCardModal> createState() => _AddCardModalState();
+}
+
+class _AddCardModalState extends State<_AddCardModal> {
+  final _nameController = TextEditingController(text: 'Nguyễn Đức Thịnh');
+  
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final dialogWidth = sizeClass == ScreenSizeClass.expanded 
+        ? 400.0 
+        : MediaQuery.of(context).size.width * 0.85;
+    
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: dialogWidth,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with gradient background
+            Container(
+              padding: EdgeInsets.symmetric(
+                vertical: sizeClass == ScreenSizeClass.expanded 
+                    ? AppSpacing.xl 
+                    : AppSpacing.lg,
+              ),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF03BE87),
+                    Color(0xFF02A876),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppSpacing.cardRadius),
+                  topRight: Radius.circular(AppSpacing.cardRadius),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  'Thêm Thẻ',
+                  style: context.responsiveTitleM.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Content
+            Padding(
+              padding: EdgeInsets.all(
+                sizeClass == ScreenSizeClass.expanded 
+                    ? AppSpacing.xl 
+                    : AppSpacing.lg,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Input label
+                  Text(
+                    'Nhập Tên Người Dùng',
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: sizeClass == ScreenSizeClass.expanded 
+                      ? AppSpacing.md 
+                      : AppSpacing.sm),
+                  
+                  // Text field
+                  TextField(
+                    controller: _nameController,
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.primarySoft,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.sm),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: sizeClass == ScreenSizeClass.expanded 
+                            ? AppSpacing.lg 
+                            : AppSpacing.md,
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: sizeClass == ScreenSizeClass.expanded 
+                      ? AppSpacing.xl 
+                      : AppSpacing.lg),
+                  
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ModalButton(
+                          label: 'Hủy',
+                          backgroundColor: AppColors.textPrimary,
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                      SizedBox(width: sizeClass == ScreenSizeClass.expanded 
+                          ? AppSpacing.lg 
+                          : AppSpacing.md),
+                      Expanded(
+                        child: _ModalButton(
+                          label: 'Thêm',
+                          backgroundColor: AppColors.primary,
+                          onTap: () {
+                            // TODO: Implement add card logic
+                            final name = _nameController.text.trim();
+                            if (name.isNotEmpty) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Đã thêm thẻ cho: $name'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Modal button widget
+class _ModalButton extends StatelessWidget {
+  const _ModalButton({
+    required this.label,
+    required this.backgroundColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 52.0 : 48.0;
+    
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(buttonHeight / 2),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(buttonHeight / 2),
+        onTap: onTap,
+        child: Container(
+          height: buttonHeight,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: context.responsiveBodyM.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Show delete card modal dialog
+void _showDeleteCardModal(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => const _DeleteCardModal(),
+  );
+}
+
+/// Delete card modal dialog
+class _DeleteCardModal extends StatefulWidget {
+  const _DeleteCardModal();
+
+  @override
+  State<_DeleteCardModal> createState() => _DeleteCardModalState();
+}
+
+class _DeleteCardModalState extends State<_DeleteCardModal> {
+  // Mock user data - will be replaced with Firebase data
+  final List<Map<String, dynamic>> _users = [
+    {'name': 'Nguyễn Đức Thịnh', 'isActive': true},
+    {'name': 'Nguyễn Đức Hoàng', 'isActive': true},
+    {'name': 'Đình Trọng Thành', 'isActive': false},
+    {'name': 'Trần Văn An', 'isActive': true},
+    {'name': 'Lê Thị Bình', 'isActive': false},
+  ];
+
+  void _deleteUser(int index) {
+    setState(() {
+      final userName = _users[index]['name'];
+      _users.removeAt(index);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã xoá: $userName'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    });
+  }
+
+  void _deleteAll() {
+    setState(() {
+      _users.clear();
+    });
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã xoá tất cả thẻ'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final dialogWidth = sizeClass == ScreenSizeClass.expanded 
+        ? 400.0 
+        : MediaQuery.of(context).size.width * 0.85;
+    final maxHeight = MediaQuery.of(context).size.height * 0.7;
+    
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: dialogWidth,
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with gradient background
+            Container(
+              padding: EdgeInsets.symmetric(
+                vertical: sizeClass == ScreenSizeClass.expanded 
+                    ? AppSpacing.xl 
+                    : AppSpacing.lg,
+              ),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF03BE87),
+                    Color(0xFF02A876),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppSpacing.cardRadius),
+                  topRight: Radius.circular(AppSpacing.cardRadius),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  'Xoá Thẻ',
+                  style: context.responsiveTitleM.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            
+            // User list with ScrollView - max 3 items visible
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: _users.isEmpty 
+                    ? 100 
+                    : (sizeClass == ScreenSizeClass.expanded ? 240.0 : 210.0), // Height for ~3 items
+              ),
+              child: _users.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(
+                          sizeClass == ScreenSizeClass.expanded 
+                              ? AppSpacing.xxl 
+                              : AppSpacing.xl,
+                        ),
+                        child: Text(
+                          'Không có thẻ nào',
+                          style: context.responsiveBodyM.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.all(
+                        sizeClass == ScreenSizeClass.expanded 
+                            ? AppSpacing.lg 
+                            : AppSpacing.md,
+                      ),
+                      itemCount: _users.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: AppSpacing.md,
+                        thickness: 1,
+                        color: AppColors.borderSoft,
+                      ),
+                      itemBuilder: (context, index) {
+                        final user = _users[index];
+                        return _UserListItem(
+                          name: user['name'] as String,
+                          isActive: user['isActive'] as bool,
+                          onDelete: () => _deleteUser(index),
+                        );
+                      },
+                    ),
+            ),
+            
+            // Action buttons
+            Padding(
+              padding: EdgeInsets.all(
+                sizeClass == ScreenSizeClass.expanded 
+                    ? AppSpacing.xl 
+                    : AppSpacing.lg,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ModalButton(
+                      label: 'Hủy',
+                      backgroundColor: AppColors.textSecondary,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  SizedBox(width: sizeClass == ScreenSizeClass.expanded 
+                      ? AppSpacing.lg 
+                      : AppSpacing.md),
+                  Expanded(
+                    child: _ModalButton(
+                      label: 'Xoá Tất Cả',
+                      backgroundColor: Colors.red,
+                      onTap: _users.isEmpty ? () {} : _deleteAll,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// User list item widget
+class _UserListItem extends StatelessWidget {
+  const _UserListItem({
+    required this.name,
+    required this.isActive,
+    required this.onDelete,
+  });
+
+  final String name;
+  final bool isActive;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: sizeClass == ScreenSizeClass.expanded 
+            ? AppSpacing.sm 
+            : AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          // User name
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: context.responsiveBodyM.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs / 2),
+                // Active status
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs / 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive 
+                        ? AppColors.primary.withOpacity(0.1) 
+                        : AppColors.textSecondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppSpacing.xs),
+                  ),
+                  child: Text(
+                    isActive ? 'Đang hoạt động' : 'Dừng hoạt động',
+                    style: context.responsiveBodyM.copyWith(
+                      fontSize: sizeClass == ScreenSizeClass.expanded ? 11.0 : 10.0,
+                      color: isActive ? AppColors.primary : AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Delete button
+          IconButton(
+            onPressed: onDelete,
+            icon: Icon(
+              Icons.delete_outline,
+              color: Colors.red,
+              size: sizeClass == ScreenSizeClass.expanded ? 24.0 : 20.0,
+            ),
+            padding: EdgeInsets.all(AppSpacing.sm),
+            constraints: const BoxConstraints(),
+          ),
+        ],
       ),
     );
   }
