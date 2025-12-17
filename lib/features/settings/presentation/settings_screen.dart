@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/constants/app_typography.dart';
-import '../../../shared/layout/auth_scaffold.dart';
+import '../../../core/constants/responsive_typography.dart';
+import '../../../shared/layout/app_scaffold.dart';
+import '../../../shared/layout/content_scaffold.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    
     final tiles = [
       const _SettingsTileData(
         icon: Icons.person_outline,
@@ -38,43 +41,67 @@ class SettingsScreen extends StatelessWidget {
       ),
     ];
 
-    return AuthScaffold(
+    return ContentScaffold(
       title: 'Cài đặt',
-      panelHeightFactor: 0.8,
-      contentTopPaddingFactor: 0.08,
-      showWave: false,
-      panelScrollable: false,
+      panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
       horizontalPaddingFactor: 0.06,
-      panelBuilder: (_) {
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppSpacing.h12,
-              ...tiles.map(
-                (tile) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: _SettingsTile(tile: tile),
-                ),
-              ),
-            ],
-          ),
+      scrollable: true,
+      titleWidget: _TitleSection(context: context),
+      body: (context, constraints) {
+        final spacing = sizeClass == ScreenSizeClass.expanded 
+            ? AppSpacing.lg 
+            : AppSpacing.md;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: tiles.map(
+            (tile) => Padding(
+              padding: EdgeInsets.only(bottom: spacing),
+              child: _SettingsTile(tile: tile),
+            ),
+          ).toList(),
         );
       },
-      titleWidget: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        child: Column(
-          children: [
-            Text(
-              'Cài đặt',
-              style: AppTypography.headlineL,
+    );
+  }
+}
+
+/// Custom title section with icon
+class _TitleSection extends StatelessWidget {
+  const _TitleSection({
+    required this.context,
+  });
+
+  final BuildContext context;
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final iconSize = sizeClass == ScreenSizeClass.expanded 
+        ? 56.0 
+        : sizeClass == ScreenSizeClass.medium
+            ? 52.0
+            : 48.0;
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            'Cài đặt',
+            style: context.responsiveHeadlineL.copyWith(
+              fontWeight: FontWeight.w800,
             ),
-            AppSpacing.h12,
-            const Icon(Icons.settings_rounded,
-                size: 48, color: Colors.black87),
-          ],
+          ),
         ),
-      ),
+        SizedBox(width: AppSpacing.md),
+        Icon(
+          Icons.settings_rounded,
+          size: iconSize,
+          color: Colors.white,
+        ),
+      ],
     );
   }
 }
@@ -98,6 +125,22 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final avatarRadius = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.cardRadius + 8 
+        : sizeClass == ScreenSizeClass.medium
+            ? AppSpacing.cardRadius + 6
+            : AppSpacing.cardRadius + 4;
+    final padding = sizeClass == ScreenSizeClass.expanded 
+        ? const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.lg,
+          )
+        : const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md + 2,
+            vertical: AppSpacing.md + 2,
+          );
+    
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -105,37 +148,48 @@ class _SettingsTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         onTap: () {},
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md + 2,
-            vertical: AppSpacing.md + 2,
-          ),
+          padding: padding,
           child: Row(
             children: [
               CircleAvatar(
-                radius: AppSpacing.cardRadius + 6,
+                radius: avatarRadius,
                 backgroundColor: AppColors.primarySoft,
-                child: Icon(tile.icon, color: AppColors.primary),
+                child: Icon(
+                  tile.icon, 
+                  color: AppColors.primary,
+                  size: avatarRadius * 0.85,
+                ),
               ),
-              AppSpacing.w12,
+              SizedBox(width: sizeClass == ScreenSizeClass.expanded 
+                  ? AppSpacing.lg 
+                  : AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       tile.title,
-                      style: AppTypography.titleM,
+                      style: context.responsiveTitleM.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    AppSpacing.h4,
+                    SizedBox(height: sizeClass == ScreenSizeClass.expanded 
+                        ? AppSpacing.xs 
+                        : AppSpacing.xs / 2),
                     Text(
                       tile.subtitle,
-                      style: AppTypography.bodyM.copyWith(
+                      style: context.responsiveBodyM.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+              Icon(
+                Icons.chevron_right, 
+                color: AppColors.textSecondary,
+                size: sizeClass == ScreenSizeClass.expanded ? 28.0 : 24.0,
+              ),
             ],
           ),
         ),

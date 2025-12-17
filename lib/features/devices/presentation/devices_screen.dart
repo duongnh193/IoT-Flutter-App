@@ -22,6 +22,7 @@ class DevicesScreen extends ConsumerWidget {
       panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
       horizontalPaddingFactor: 0.06,
       scrollable: true,
+      titleWidget: _TitleSection(context: context),
       body: (context, constraints) {
         return roomsAsync.when(
           data: (rooms) => _buildRoomsGrid(context, constraints, rooms),
@@ -76,6 +77,46 @@ class DevicesScreen extends ConsumerWidget {
           onTap: () => context.push('/devices/${room.id}'),
         );
       },
+    );
+  }
+}
+
+/// Custom title section with icon
+class _TitleSection extends StatelessWidget {
+  const _TitleSection({
+    required this.context,
+  });
+
+  final BuildContext context;
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final iconSize = sizeClass == ScreenSizeClass.expanded 
+        ? 56.0 
+        : sizeClass == ScreenSizeClass.medium
+            ? 52.0
+            : 48.0;
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            'Chọn Phòng',
+            style: context.responsiveHeadlineL.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        SizedBox(width: AppSpacing.md),
+        Icon(
+          Icons.meeting_room,
+          size: iconSize,
+          color: Colors.white,
+        ),
+      ],
     );
   }
 }
