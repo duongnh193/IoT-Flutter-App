@@ -97,7 +97,7 @@ class GateRoomScreen extends ConsumerWidget {
         return ContentScaffold(
           title: gateRoom.name,
           showBack: true,
-          panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
+          panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.90 : 0.85,
           horizontalPaddingFactor: 0.06,
           scrollable: true,
           titleWidget: _GateHeader(room: gateRoom),

@@ -63,7 +63,7 @@ class RoomDetailScreen extends ConsumerWidget {
       title: room.name,
       showWave: false,
       contentTopPaddingFactor: 0.08,
-      panelHeightFactor: 0.86,
+      panelHeightFactor: 0.80,
       panelScrollable: false,
       horizontalPaddingFactor: 0.06,
       panelBuilder: (constraints) {
