@@ -22,6 +22,10 @@ class DevicesScreen extends ConsumerWidget {
       panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.90 : 0.85,
       horizontalPaddingFactor: 0.06,
       scrollable: true,
+      onRefresh: () async {
+        ref.invalidate(roomListProvider);
+        await Future.delayed(const Duration(milliseconds: 500));
+      },
       titleWidget: _TitleSection(context: context),
       body: (context, constraints) {
         return roomsAsync.when(

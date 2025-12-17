@@ -24,6 +24,10 @@ class ScenesScreen extends ConsumerWidget {
       panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.85 : 0.80,
       horizontalPaddingFactor: 0.06,
       scrollable: true,
+      onRefresh: () async {
+        await ref.read(sceneControllerProvider.notifier).refresh();
+        await Future.delayed(const Duration(milliseconds: 500));
+      },
       actions: [
         IconButton(
           onPressed: () {},

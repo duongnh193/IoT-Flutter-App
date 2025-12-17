@@ -31,6 +31,7 @@ class ContentScaffold extends StatelessWidget {
     this.showBack = false,
     this.titleWidget,
     this.floatingActionButton,
+    this.onRefresh,
   });
 
   /// Screen title (used if titleWidget is null)
@@ -76,6 +77,9 @@ class ContentScaffold extends StatelessWidget {
   
   /// Optional floating action button
   final Widget? floatingActionButton;
+
+  /// Optional refresh callback for pull-to-refresh
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +161,18 @@ class ContentScaffold extends StatelessWidget {
                         builder: (context, panelConstraints) {
                           final content = body(context, panelConstraints);
                           if (scrollable) {
+                            if (onRefresh != null) {
+                              return RefreshIndicator(
+                                onRefresh: onRefresh!,
+                                color: AppColors.primary,
+                                child: SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(
+                                    parent: BouncingScrollPhysics(),
+                                  ),
+                                  child: content,
+                                ),
+                              );
+                            }
                             return SingleChildScrollView(
                               physics: const BouncingScrollPhysics(),
                               child: content,

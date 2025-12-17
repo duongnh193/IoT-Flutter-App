@@ -100,6 +100,11 @@ class GateRoomScreen extends ConsumerWidget {
           panelHeightFactor: sizeClass == ScreenSizeClass.expanded ? 0.90 : 0.85,
           horizontalPaddingFactor: 0.06,
           scrollable: true,
+          onRefresh: () async {
+            final deviceController = ref.read(deviceControllerProvider.notifier);
+            await deviceController.refresh();
+            await Future.delayed(const Duration(milliseconds: 500));
+          },
           titleWidget: _GateHeader(room: gateRoom),
           floatingActionButton: const AddDeviceButton(),
           body: (context, constraints) {
