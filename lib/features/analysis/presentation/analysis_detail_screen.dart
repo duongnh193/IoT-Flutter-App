@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +17,7 @@ class AnalysisDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final period = ref.watch(analysisPeriodProvider);
-    final detail = ref.watch(analysisDetailProvider);
+    final detailAsync = ref.watch(analysisDetailProvider);
     final sizeClass = context.screenSizeClass;
 
     return ContentScaffold(
@@ -37,19 +38,57 @@ class AnalysisDetailScreen extends ConsumerWidget {
             ? AppSpacing.xl 
             : AppSpacing.lg;
         
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _PeriodTabs(
-              selected: period,
-              onChanged: (value) =>
-                  ref.read(analysisPeriodProvider.notifier).state = value,
+        return detailAsync.when(
+          data: (detail) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _PeriodTabs(
+                selected: period,
+                onChanged: (value) =>
+                    ref.read(analysisPeriodProvider.notifier).state = value,
+              ),
+              SizedBox(height: spacing),
+              _EnergyBarCard(detail: detail),
+              SizedBox(height: spacing),
+              _SummaryRow(detail: detail),
+            ],
+          ),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.xxl),
+              child: CircularProgressIndicator(),
             ),
-            SizedBox(height: spacing),
-            _EnergyBarCard(detail: detail),
-            SizedBox(height: spacing),
-            _SummaryRow(detail: detail),
-          ],
+          ),
+          error: (error, stack) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Lỗi khi tải dữ liệu',
+                    style: context.responsiveTitleM.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.xs),
+                  Text(
+                    error.toString(),
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
@@ -159,6 +198,29 @@ class _EnergyBarCard extends StatelessWidget {
 
   final AnalysisDetailData detail;
 
+  /// Calculate nice interval for Y-axis labels
+  double _calculateNiceInterval(double baseInterval) {
+    if (baseInterval <= 0) return 1.0;
+    
+    // Làm tròn interval lên số đẹp (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, ...)
+    final ln10 = math.log(10);
+    final magnitude = math.pow(10, (math.log(baseInterval) / ln10).floor()).toDouble();
+    final normalized = baseInterval / magnitude;
+    
+    double niceInterval;
+    if (normalized <= 1) {
+      niceInterval = 1 * magnitude;
+    } else if (normalized <= 2) {
+      niceInterval = 2 * magnitude;
+    } else if (normalized <= 5) {
+      niceInterval = 5 * magnitude;
+    } else {
+      niceInterval = 10 * magnitude;
+    }
+    
+    return niceInterval;
+  }
+
   @override
   Widget build(BuildContext context) {
     final sizeClass = context.screenSizeClass;
@@ -174,12 +236,70 @@ class _EnergyBarCard extends StatelessWidget {
     
     // Convert kwh to wh for display
     final pointsInWh = detail.points.map((e) => e.kwh * 1000).toList();
-    final maxValue = pointsInWh.reduce((a, b) => a > b ? a : b);
-    // Tăng maxY để có khoảng trống phía trên
-    final maxY = (maxValue * 1.4).clamp(100.0, 15000.0);
     
-    // Tính interval cho Y-axis labels (chia thành 5 phần để rõ ràng hơn)
-    final yInterval = (maxY / 5).roundToDouble().clamp(500.0, 3000.0);
+    // Tính min và max từ dữ liệu thực tế
+    final minValue = pointsInWh.reduce((a, b) => a < b ? a : b);
+    final maxValue = pointsInWh.reduce((a, b) => a > b ? a : b);
+    
+    // Tính maxY với khoảng trống hợp lý (10-20% phía trên)
+    // Đảm bảo minY là 0 hoặc gần 0 nếu tất cả giá trị đều dương
+    final dataRange = maxValue - minValue;
+    final yAxisPadding = dataRange > 0 ? (dataRange * 0.15) : (maxValue * 0.2);
+    final maxY = maxValue + yAxisPadding;
+    final minY = minValue > 0 && minValue < maxValue * 0.1 
+        ? 0.0 
+        : (minValue - yAxisPadding).clamp(0.0, double.infinity);
+    
+    // Tính số lượng labels hợp lý (4-6 labels)
+    final targetLabelCount = 5;
+    final range = maxY - minY;
+    
+    // Tính interval hợp lý dựa trên range
+    double yInterval;
+    if (range <= 0 || maxValue == 0) {
+      // Nếu không có dữ liệu hoặc tất cả = 0
+      yInterval = maxValue > 0 ? _calculateNiceInterval(maxValue / targetLabelCount) : 1.0;
+    } else {
+      // Tính interval cơ bản
+      double baseInterval = range / targetLabelCount;
+      yInterval = _calculateNiceInterval(baseInterval);
+      
+      // Đảm bảo interval không quá nhỏ
+      if (yInterval < 0.01 && maxY < 1) {
+        yInterval = 0.01;
+      } else if (yInterval < 0.1 && maxY < 10) {
+        yInterval = 0.1;
+      } else if (yInterval < 1 && maxY < 100) {
+        yInterval = 1;
+      } else if (yInterval < 10 && maxY < 1000) {
+        yInterval = 10;
+      }
+    }
+    
+    // Điều chỉnh maxY và minY để chia hết cho interval và có padding hợp lý
+    var adjustedMaxY = ((maxValue * 1.15) / yInterval).ceil() * yInterval;
+    var adjustedMinY = math.max(0.0, ((minValue * 0.95) / yInterval).floor() * yInterval);
+    
+    // Đảm bảo adjustedMaxY >= maxValue
+    adjustedMaxY = math.max(adjustedMaxY, maxValue * 1.1);
+    
+    // Recalculate interval based on final range để có labels đẹp hơn
+    final finalRange = adjustedMaxY - adjustedMinY;
+    if (finalRange > 0) {
+      final finalInterval = finalRange / targetLabelCount;
+      yInterval = _calculateNiceInterval(finalInterval);
+      
+      // Điều chỉnh lại maxY và minY theo interval mới
+      adjustedMaxY = (adjustedMaxY / yInterval).ceil() * yInterval;
+      adjustedMinY = (adjustedMinY / yInterval).floor() * yInterval;
+      
+      // Đảm bảo adjustedMaxY >= maxValue
+      adjustedMaxY = math.max(adjustedMaxY, maxValue * 1.1);
+      adjustedMinY = math.max(0.0, adjustedMinY);
+    }
+    
+    final finalMaxY = adjustedMaxY;
+    final finalMinY = adjustedMinY;
     
     // Kiểm tra nếu là period year thì cần scrollable
     final isYearPeriod = detail.period == AnalysisPeriod.year;
@@ -234,7 +354,8 @@ class _EnergyBarCard extends StatelessWidget {
                           child: _buildYAxisLabels(
                             context,
                             sizeClass,
-                            maxY,
+                            finalMaxY,
+                            finalMinY,
                             yInterval,
                             chartHeight - 16, // Trừ padding top/bottom
                           ),
@@ -259,7 +380,8 @@ class _EnergyBarCard extends StatelessWidget {
                                 sizeClass,
                                 detail,
                                 pointsInWh,
-                                maxY,
+                                finalMaxY,
+                                finalMinY,
                                 yInterval,
                                 barWidth,
                                 groupsSpace,
@@ -282,7 +404,8 @@ class _EnergyBarCard extends StatelessWidget {
                       sizeClass,
                       detail,
                       pointsInWh,
-                      maxY,
+                      finalMaxY,
+                      finalMinY,
                       yInterval,
                       barWidth,
                       groupsSpace,
@@ -299,49 +422,84 @@ class _EnergyBarCard extends StatelessWidget {
     BuildContext context,
     ScreenSizeClass sizeClass,
     double maxY,
+    double minY,
     double yInterval,
     double availableHeight,
   ) {
-    // Tính số labels (không tính 0)
-    final labelCount = (maxY / yInterval).ceil();
+    // Tính số labels từ minY đến maxY
+    final range = maxY - minY;
+    var labelCount = (range / yInterval).ceil() + 1; // +1 để bao gồm cả minY và maxY
+    
+    // Giới hạn số lượng labels để tránh overflow (tối đa 6 labels)
+    const maxLabels = 6;
+    if (labelCount > maxLabels) {
+      // Tăng interval để giảm số labels
+      yInterval = range / (maxLabels - 1);
+      labelCount = maxLabels;
+    }
+    
     // Space cho bottom labels (X-axis)
     final bottomSpace = sizeClass == ScreenSizeClass.expanded ? 32.0 : 28.0;
     final chartAreaHeight = availableHeight - bottomSpace;
-    final labelSpacing = chartAreaHeight / labelCount;
+    
+    // Tính chiều cao tối thiểu cho mỗi label (bao gồm text và spacing)
+    final minLabelHeight = sizeClass == ScreenSizeClass.compact ? 20.0 : 24.0;
+    final maxPossibleLabels = (chartAreaHeight / minLabelHeight).floor();
+    
+    // Điều chỉnh labelCount nếu quá nhiều
+    if (labelCount > maxPossibleLabels) {
+      labelCount = maxPossibleLabels;
+      yInterval = range / (labelCount - 1);
+    }
     
     final labels = <Widget>[];
     
-    // Tạo labels từ trên xuống (maxY -> yInterval)
-    for (int i = labelCount; i > 0; i--) {
-      final value = i * yInterval;
-      labels.add(
-        SizedBox(
-          height: labelSpacing,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Text(
-                '${value.toInt()}wh',
-                style: context.responsiveLabelM.copyWith(
-                  fontSize: sizeClass == ScreenSizeClass.compact ? 10 : 11,
-                  color: AppColors.textSecondary,
+    // Tạo labels từ maxY xuống minY
+    for (int i = labelCount - 1; i >= 0; i--) {
+      final value = minY + (i * yInterval);
+      // Chỉ hiển thị nếu value >= minY và <= maxY (với tolerance nhỏ)
+      if (value >= minY - 0.001 && value <= maxY + 0.001) {
+        labels.add(
+          Flexible(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Text(
+                  value >= 1 
+                      ? '${value.toInt()}wh'
+                      : value >= 0.1
+                          ? '${value.toStringAsFixed(1)}wh'
+                          : '${value.toStringAsFixed(2)}wh',
+                  style: context.responsiveLabelM.copyWith(
+                    fontSize: sizeClass == ScreenSizeClass.compact ? 10 : 11,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                textAlign: TextAlign.right,
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
     }
     
-    // Thêm space cho bottom labels ở cuối
-    labels.add(SizedBox(height: bottomSpace));
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: labels,
+    return SizedBox(
+      height: availableHeight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Top spacer để align với chart top
+          const SizedBox(height: 8),
+          // Labels
+          ...labels,
+          // Bottom spacer để align với X-axis
+          SizedBox(height: bottomSpace),
+        ],
+      ),
     );
   }
 
@@ -352,6 +510,7 @@ class _EnergyBarCard extends StatelessWidget {
     AnalysisDetailData detail,
     List<double> pointsInWh,
     double maxY,
+    double minY,
     double yInterval,
     double barWidth,
     double groupsSpace,
@@ -426,7 +585,7 @@ class _EnergyBarCard extends StatelessWidget {
             ),
         ],
         maxY: maxY,
-        minY: 0,
+        minY: minY,
       ),
     );
   }
@@ -437,6 +596,7 @@ class _EnergyBarCard extends StatelessWidget {
     AnalysisDetailData detail,
     List<double> pointsInWh,
     double maxY,
+    double minY,
     double yInterval,
     double barWidth,
     double groupsSpace,
@@ -533,7 +693,7 @@ class _EnergyBarCard extends StatelessWidget {
                       ),
                   ],
                   maxY: maxY,
-                  minY: 0,
+                  minY: minY,
                 ),
               );
   }

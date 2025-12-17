@@ -88,6 +88,27 @@ class EnergyFirestoreDataSource {
       return docs.map((doc) => doc.id).toList();
     });
   }
+
+  /// Get energy summary document by year
+  /// Collection: energy_summary/{YYYY}
+  /// Document contains: monthly_data (e.g., {11: 303, 12: 0.00918, 01: 123, ...})
+  Future<Map<String, dynamic>?> getEnergySummaryByYear(int year) async {
+    final doc = await _firestore.collection('energy_summary').doc(year.toString()).get();
+    if (!doc.exists) return null;
+    return doc.data();
+  }
+
+  /// Watch energy summary document by year
+  Stream<Map<String, dynamic>?> watchEnergySummaryByYear(int year) {
+    return _firestore
+        .collection('energy_summary')
+        .doc(year.toString())
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return null;
+      return snapshot.data();
+    });
+  }
 }
 
 /// Wrapper class for Firestore document
