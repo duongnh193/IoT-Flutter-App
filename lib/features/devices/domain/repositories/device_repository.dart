@@ -31,5 +31,8 @@ abstract class DeviceRepository {
 
   /// Update light command (0 = tắt, 1 = tiết kiệm, 2 = vừa, 3 = sáng)
   Future<void> updateLightCommand(String deviceId, int command);
+
+  /// Update purifier command (0 = tắt, 1 = bật)
+  Future<void> updatePurifierCommand(String deviceId, int command);
 }
 

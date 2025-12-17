@@ -251,14 +251,21 @@ class RoomDevicesScreen extends ConsumerWidget {
                 ],
                 
                 // Máy Lọc Không Khí (Air Purifier) - only show if exists
-                if (airPurifierDevice != null)
-                  _DeviceRow(
-                    device: airPurifierDevice,
-                    status: airPurifierDevice.isOn ? 'Đang Mở' : 'Đang Đóng',
-                    onToggle: () {
-                      ref.read(deviceControllerProvider.notifier).toggle(airPurifierDevice.id);
-                    },
+                if (airPurifierDevice != null) ...[
+                  Text(
+                    'Máy Lọc Không Khí',
+                    style: context.responsiveTitleM.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
+                  SizedBox(height: sectionSpacing),
+                  
+                  // Air purifier control buttons
+                  _PurifierControlButtons(
+                    device: airPurifierDevice,
+                  ),
+                ],
               ],
             );
           },
@@ -766,4 +773,164 @@ class _LightButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PurifierControlButtons extends ConsumerStatefulWidget {
+  const _PurifierControlButtons({
+    required this.device,
+  });
+
+  final Device device;
+
+  @override
+  ConsumerState<_PurifierControlButtons> createState() => _PurifierControlButtonsState();
+}
+
+class _PurifierControlButtonsState extends ConsumerState<_PurifierControlButtons> {
+  bool _isOn = false; // Current state from hardware (state: true/false)
+  int? _lastCommand; // Track last command to prevent duplicate updates
+  DateTime? _lastUpdateTime; // Track when we last updated via UI
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize from device state
+    _isOn = widget.device.isOn;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch Firebase data for this device
+    final deviceDataAsync = ref.watch(deviceDataProvider(widget.device.id));
+    
+    // Update state when Firebase data changes (ignore for 2 seconds after UI update)
+    deviceDataAsync.whenData((data) {
+      if (data != null && mounted) {
+        final now = DateTime.now();
+        // Ignore stream updates for 2 seconds after manual update
+        if (_lastUpdateTime != null && 
+            now.difference(_lastUpdateTime!).inSeconds < 2) {
+          return; // Don't override optimistic update yet
+        }
+        
+        // state: Giá trị từ phần cứng (hardware response) - dùng để hiển thị
+        final state = data['state'] as bool? ?? false;
+        
+        // Only update if value changed to avoid unnecessary rebuilds
+        if (state != _isOn) {
+          setState(() {
+            _isOn = state;
+          });
+        }
+      }
+    });
+
+    final sizeClass = context.screenSizeClass;
+    final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 56.0 : 48.0;
+    final iconSize = sizeClass == ScreenSizeClass.expanded ? 24.0 : 20.0;
+    final fontSize = sizeClass == ScreenSizeClass.expanded ? 14.0 : 13.0;
+
+    // Define buttons: Tắt (0) and Bật (1)
+    final buttons = [
+      _PurifierButton(
+        command: 0,
+        label: 'Tắt',
+        icon: Icons.power_off,
+        isActive: !_isOn,
+      ),
+      _PurifierButton(
+        command: 1,
+        label: 'Bật',
+        icon: Icons.power_settings_new,
+        isActive: _isOn,
+      ),
+    ];
+
+    return Wrap(
+      spacing: sizeClass == ScreenSizeClass.compact 
+          ? AppSpacing.sm 
+          : AppSpacing.md,
+      runSpacing: AppSpacing.sm,
+      children: buttons.map((button) {
+        return GestureDetector(
+          onTap: () => _handleCommandChange(button.command),
+          child: Container(
+            height: buttonHeight,
+            padding: sizeClass == ScreenSizeClass.expanded 
+                ? EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md)
+                : EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: button.isActive ? AppColors.primary : AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(
+                color: button.isActive ? AppColors.primary : AppColors.borderSoft,
+                width: button.isActive ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  button.icon,
+                  size: iconSize,
+                  color: button.isActive ? Colors.white : AppColors.primary,
+                ),
+                SizedBox(width: AppSpacing.xs),
+                Text(
+                  button.label,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: button.isActive ? FontWeight.w700 : FontWeight.w500,
+                    color: button.isActive ? Colors.white : AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<void> _handleCommandChange(int command) async {
+    // command: 0=tắt, 1=bật
+    if (_lastCommand == command) return; // Prevent duplicate updates
+    
+    _lastCommand = command;
+    _lastUpdateTime = DateTime.now(); // Track update time
+    // Optimistic update - UI shows new state immediately
+    setState(() {
+      _isOn = command == 1;
+    });
+    
+    final repository = ref.read(deviceRepositoryProvider);
+    try {
+      // Gửi 'command' lên Firebase (UI command) - phần cứng sẽ đọc và cập nhật 'state'
+      await repository.updatePurifierCommand(widget.device.id, command);
+    } catch (e) {
+      // Revert on error
+      _lastCommand = null;
+      _lastUpdateTime = null;
+      if (mounted) {
+        // Revert will happen via stream (state will update)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
+  }
+}
+
+class _PurifierButton {
+  const _PurifierButton({
+    required this.command,
+    required this.label,
+    required this.icon,
+    required this.isActive,
+  });
+
+  final int command; // 0=tắt, 1=bật
+  final String label;
+  final IconData icon;
+  final bool isActive;
 }

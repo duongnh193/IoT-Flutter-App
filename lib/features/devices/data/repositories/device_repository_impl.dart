@@ -136,5 +136,14 @@ class DeviceRepositoryImpl implements DeviceRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<void> updatePurifierCommand(String deviceId, int command) async {
+    try {
+      await remoteDataSource.updatePurifierCommand(deviceId, command);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 

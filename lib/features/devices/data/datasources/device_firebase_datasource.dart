@@ -118,6 +118,24 @@ class DeviceFirebaseDataSource {
     }
   }
 
+  /// Set purifier command using PUT (for firmware compatibility)
+  /// Uses set() instead of update() to send HTTP PUT request
+  /// Gửi 'command' (UI command) lên Firebase, phần cứng sẽ đọc và cập nhật 'state'
+  Future<void> setPurifierCommand(String path, int command) async {
+    await _database.child(path).set(command);
+  }
+
+  /// Get Firebase path for purifier command (UI command)
+  /// Path này dùng để gửi 'command' từ UI lên Firebase
+  String? getPurifierCommandPath(String deviceId) {
+    switch (deviceId) {
+      case 'air-purifier-living':
+        return 'living_room/purifier/command'; // UI command path
+      default:
+        return null;
+    }
+  }
+
   /// Get Firebase path for a device ID
   String? _getDevicePath(String deviceId) {
     switch (deviceId) {
@@ -228,12 +246,15 @@ class DeviceFirebaseDataSource {
       // Purifier
       if (livingRoom['purifier'] != null) {
         final purifier = livingRoom['purifier'] as Map<dynamic, dynamic>;
+        // state: Trạng thái thực tế từ phần cứng (hardware response) - dùng để hiển thị
+        // command: Command từ UI (không dùng để parse state)
+        final state = purifier['state'] as bool? ?? false;
         devices.add(DeviceModel(
           id: 'air-purifier-living',
           name: 'Máy Lọc Không Khí',
           type: DeviceType.sensor,
           room: 'Phòng khách',
-          isOn: purifier['state'] as bool? ?? false,
+          isOn: state,
           power: 35.0,
         ));
       }
@@ -299,12 +320,15 @@ class DeviceFirebaseDataSource {
           power: 42.0,
         );
       case 'air-purifier-living':
+        // state: Trạng thái thực tế từ phần cứng (hardware response) - dùng để hiển thị
+        // command: Command từ UI (không dùng để parse state)
+        final state = data['state'] as bool? ?? false;
         return DeviceModel(
           id: id,
           name: 'Máy Lọc Không Khí',
           type: DeviceType.sensor,
           room: 'Phòng khách',
-          isOn: data['state'] as bool? ?? false,
+          isOn: state,
           power: 35.0,
         );
       default:
@@ -343,8 +367,9 @@ class DeviceFirebaseDataSource {
           'living_room/light/command': newState ? 1 : 0,
         };
       case 'air-purifier-living':
+        // Chỉ update 'command' (UI command) - phần cứng sẽ đọc và cập nhật 'state'
+        // Không được update 'state' từ UI (đây là giá trị từ hardware)
         return {
-          'living_room/purifier/state': newState,
           'living_room/purifier/command': newState ? 1 : 0,
         };
       default:
@@ -386,6 +411,20 @@ class DeviceFirebaseDataSource {
       case 'light-living':
         return {
           'living_room/light/command': command, // UI command - phần cứng sẽ đọc
+        };
+      default:
+        return {};
+    }
+  }
+
+  /// Update purifier command (0 = tắt, 1 = bật)
+  /// Trả về map để update 'command' (UI command)
+  /// 'state' sẽ được phần cứng cập nhật dựa trên command
+  Map<String, dynamic> getPurifierCommandUpdates(String deviceId, int command) {
+    switch (deviceId) {
+      case 'air-purifier-living':
+        return {
+          'living_room/purifier/command': command, // UI command - phần cứng sẽ đọc
         };
       default:
         return {};
