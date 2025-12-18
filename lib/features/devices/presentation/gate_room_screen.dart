@@ -10,17 +10,55 @@ import '../domain/entities/device_type.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../providers/room_provider.dart';
+import '../providers/rfid_card_provider.dart';
+import '../data/datasources/rfid_card_firestore_datasource.dart';
 import 'widgets/add_device_button.dart';
 
 /// Gate room screen with special layout: device, access history, and card management
-class GateRoomScreen extends ConsumerWidget {
+class GateRoomScreen extends ConsumerStatefulWidget {
   const GateRoomScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GateRoomScreen> createState() => _GateRoomScreenState();
+}
+
+class _GateRoomScreenState extends ConsumerState<GateRoomScreen> {
+  bool _isDialogShowing = false;
+  String? _processingCardId;
+
+
+  @override
+  Widget build(BuildContext context) {
     final roomsAsync = ref.watch(roomListProvider);
     final devices = ref.watch(devicesProvider);
     final sizeClass = context.screenSizeClass;
+    final isAddingCard = ref.watch(isAddingCardProvider);
+    // Preload named cards data at screen level so it's ready when modal opens
+    ref.watch(namedRfidCardsProvider);
+    // Watch to trigger listener for unnamed cards
+    ref.watch(unnamedRfidCardsProvider);
+
+    // Listen for new unnamed cards when in "add card" mode
+    ref.listen(unnamedRfidCardsProvider, (previous, next) {
+      next.whenData((unnamedCards) {
+        if (isAddingCard && unnamedCards.isNotEmpty && !_isDialogShowing && mounted) {
+          // Get the first unnamed card that we haven't processed yet
+          for (final card in unnamedCards) {
+            if (card.id != _processingCardId) {
+              _processingCardId = card.id;
+              _isDialogShowing = true;
+              // Show dialog after a short delay to ensure context is available
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _showNameCardModal(context, card.id);
+                }
+              });
+              break;
+            }
+          }
+        }
+      });
+    });
 
     return roomsAsync.when(
       data: (rooms) {
@@ -159,7 +197,23 @@ class GateRoomScreen extends ConsumerWidget {
                 SizedBox(height: dividerSpacing),
                 
                 // Action buttons: Thêm Thẻ and Xoá Thẻ
-                _CardActionButtons(),
+                _CardActionButtons(
+                  onAddCard: () {
+                    // Enable "add card" mode and show waiting message
+                    ref.read(isAddingCardProvider.notifier).state = true;
+                    _isDialogShowing = false;
+                    _processingCardId = null;
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng quẹt thẻ RFID mới vào thiết bị...'),
+                          duration: Duration(seconds: 3),
+                          backgroundColor: Colors.blue,
+                        ),
+                      );
+                    }
+                  },
+                ),
               ],
             );
           },
@@ -170,6 +224,32 @@ class GateRoomScreen extends ConsumerWidget {
         child: Text('Lỗi: $error', style: context.responsiveBodyM),
       ),
     );
+  }
+
+  /// Show name card modal dialog (for new unnamed card)
+  void _showNameCardModal(BuildContext context, String cardId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _NameCardModal(
+        cardId: cardId,
+        onComplete: () {
+          // Disable "add card" mode after completion
+          ref.read(isAddingCardProvider.notifier).state = false;
+          _isDialogShowing = false;
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+        },
+      ),
+    ).then((_) {
+      // Reset dialog showing flag when dialog is closed
+      if (mounted) {
+        setState(() {
+          _isDialogShowing = false;
+        });
+      }
+    });
   }
 }
 
@@ -347,9 +427,15 @@ class _AccessHistoryList extends StatelessWidget {
 }
 
 /// Card action buttons: Thêm Thẻ and Xoá Thẻ
-class _CardActionButtons extends StatelessWidget {
+class _CardActionButtons extends ConsumerWidget {
+  const _CardActionButtons({
+    required this.onAddCard,
+  });
+
+  final VoidCallback onAddCard;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final sizeClass = context.screenSizeClass;
     final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 56.0 : 48.0;
     final iconSize = sizeClass == ScreenSizeClass.expanded ? 24.0 : 20.0;
@@ -366,9 +452,7 @@ class _CardActionButtons extends StatelessWidget {
             icon: Icons.add,
             iconSize: iconSize,
             height: buttonHeight,
-            onTap: () {
-              _showAddCardModal(context);
-            },
+            onTap: onAddCard,
           ),
         ),
         SizedBox(width: spacing),
@@ -380,7 +464,7 @@ class _CardActionButtons extends StatelessWidget {
             iconSize: iconSize,
             height: buttonHeight,
             onTap: () {
-              _showDeleteCardModal(context);
+              _showDeleteCardModal(context, ref);
             },
           ),
         ),
@@ -446,12 +530,226 @@ class _CardActionButton extends StatelessWidget {
   }
 }
 
-/// Show add card modal dialog
-void _showAddCardModal(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (context) => const _AddCardModal(),
-  );
+/// Name card modal dialog (shown when new unnamed card is detected)
+class _NameCardModal extends ConsumerStatefulWidget {
+  const _NameCardModal({
+    required this.cardId,
+    required this.onComplete,
+  });
+
+  final String cardId;
+  final VoidCallback onComplete;
+
+  @override
+  ConsumerState<_NameCardModal> createState() => _NameCardModalState();
+}
+
+class _NameCardModalState extends ConsumerState<_NameCardModal> {
+  final _nameController = TextEditingController();
+  bool _isUpdating = false;
+  
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _updateCardName() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập tên người dùng'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isUpdating = true;
+    });
+
+    try {
+      final datasource = ref.read(rfidCardFirestoreDataSourceProvider);
+      await datasource.updateOwnerName(widget.cardId, name);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã thêm thẻ cho: $name'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        widget.onComplete();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi cập nhật: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isUpdating = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    final dialogWidth = sizeClass == ScreenSizeClass.expanded 
+        ? 400.0 
+        : MediaQuery.of(context).size.width * 0.85;
+    
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: dialogWidth,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with gradient background
+            Container(
+              padding: EdgeInsets.symmetric(
+                vertical: sizeClass == ScreenSizeClass.expanded 
+                    ? AppSpacing.xl 
+                    : AppSpacing.lg,
+              ),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF03BE87),
+                    Color(0xFF02A876),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppSpacing.cardRadius),
+                  topRight: Radius.circular(AppSpacing.cardRadius),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  'Thêm Thẻ',
+                  style: context.responsiveTitleM.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Content
+            Padding(
+              padding: EdgeInsets.all(
+                sizeClass == ScreenSizeClass.expanded 
+                    ? AppSpacing.xl 
+                    : AppSpacing.lg,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Info message
+                  Text(
+                    'Thẻ mới đã được phát hiện! Vui lòng nhập tên cho thẻ này.',
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: sizeClass == ScreenSizeClass.expanded 
+                      ? AppSpacing.lg 
+                      : AppSpacing.md),
+                  
+                  // Input label
+                  Text(
+                    'Nhập Tên Người Dùng',
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: sizeClass == ScreenSizeClass.expanded 
+                      ? AppSpacing.md 
+                      : AppSpacing.sm),
+                  
+                  // Text field
+                  TextField(
+                    controller: _nameController,
+                    enabled: !_isUpdating,
+                    autofocus: true,
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.primarySoft,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.sm),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: sizeClass == ScreenSizeClass.expanded 
+                            ? AppSpacing.lg 
+                            : AppSpacing.md,
+                      ),
+                      hintText: 'Ví dụ: Nguyễn Văn A',
+                    ),
+                    onSubmitted: (_) => _updateCardName(),
+                  ),
+                  
+                  SizedBox(height: sizeClass == ScreenSizeClass.expanded 
+                      ? AppSpacing.xl 
+                      : AppSpacing.lg),
+                  
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ModalButton(
+                          label: 'Hủy',
+                          backgroundColor: AppColors.textSecondary,
+                          onTap: _isUpdating ? null : widget.onComplete,
+                        ),
+                      ),
+                      SizedBox(width: sizeClass == ScreenSizeClass.expanded 
+                          ? AppSpacing.lg 
+                          : AppSpacing.md),
+                      Expanded(
+                        child: _isUpdating
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(AppSpacing.md),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            : _ModalButton(
+                                label: 'Thêm',
+                                backgroundColor: AppColors.primary,
+                                onTap: _updateCardName,
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Add card modal dialog
@@ -624,7 +922,7 @@ class _ModalButton extends StatelessWidget {
 
   final String label;
   final Color backgroundColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -632,7 +930,7 @@ class _ModalButton extends StatelessWidget {
     final buttonHeight = sizeClass == ScreenSizeClass.expanded ? 52.0 : 48.0;
     
     return Material(
-      color: backgroundColor,
+      color: onTap == null ? backgroundColor.withOpacity(0.5) : backgroundColor,
       borderRadius: BorderRadius.circular(buttonHeight / 2),
       child: InkWell(
         borderRadius: BorderRadius.circular(buttonHeight / 2),
@@ -654,75 +952,123 @@ class _ModalButton extends StatelessWidget {
 }
 
 /// Show delete card modal dialog
-void _showDeleteCardModal(BuildContext context) {
+void _showDeleteCardModal(BuildContext context, WidgetRef ref) {
   showDialog(
     context: context,
-    builder: (context) => const _DeleteCardModal(),
+    builder: (context) => _DeleteCardModal(ref: ref),
   );
 }
 
 /// Delete card modal dialog
-class _DeleteCardModal extends StatefulWidget {
-  const _DeleteCardModal();
+class _DeleteCardModal extends ConsumerWidget {
+  const _DeleteCardModal({required this.ref});
+
+  final WidgetRef ref;
 
   @override
-  State<_DeleteCardModal> createState() => _DeleteCardModalState();
-}
-
-class _DeleteCardModalState extends State<_DeleteCardModal> {
-  // Mock user data - will be replaced with Firebase data
-  final List<Map<String, dynamic>> _users = [
-    {'name': 'Nguyễn Đức Thịnh', 'isActive': true},
-    {'name': 'Nguyễn Đức Hoàng', 'isActive': true},
-    {'name': 'Đình Trọng Thành', 'isActive': false},
-    {'name': 'Trần Văn An', 'isActive': true},
-    {'name': 'Lê Thị Bình', 'isActive': false},
-  ];
-
-  void _deleteUser(int index) {
-    setState(() {
-      final userName = _users[index]['name'];
-      _users.removeAt(index);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã xoá: $userName'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    });
-  }
-
-  void _deleteAll() {
-    setState(() {
-      _users.clear();
-    });
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã xoá tất cả thẻ'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef widgetRef) {
+    final namedCardsAsync = ref.watch(namedRfidCardsProvider);
     final sizeClass = context.screenSizeClass;
     final dialogWidth = sizeClass == ScreenSizeClass.expanded 
         ? 400.0 
         : MediaQuery.of(context).size.width * 0.85;
-    final maxHeight = MediaQuery.of(context).size.height * 0.7;
     
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         width: dialogWidth,
-        constraints: BoxConstraints(maxHeight: maxHeight),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         ),
-        child: Column(
+        child: namedCardsAsync.when(
+          data: (namedCards) => _DeleteCardModalContent(cards: namedCards),
+          loading: () => Padding(
+            padding: EdgeInsets.all(AppSpacing.xl),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, stack) {
+            // Log error for debugging
+            debugPrint('Error loading named cards: $error');
+            // Show empty content on error
+            return _DeleteCardModalContent(cards: []);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteCardModalContent extends ConsumerStatefulWidget {
+  const _DeleteCardModalContent({required this.cards});
+
+  final List<RfidCardDocument> cards;
+
+  @override
+  ConsumerState<_DeleteCardModalContent> createState() => _DeleteCardModalContentState();
+}
+
+class _DeleteCardModalContentState extends ConsumerState<_DeleteCardModalContent> {
+  Future<void> _deleteCard(String cardId, String ownerName) async {
+    try {
+      final datasource = ref.read(rfidCardFirestoreDataSourceProvider);
+      await datasource.deleteCard(cardId);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã xoá: $ownerName'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi xoá: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAll() async {
+    try {
+      final datasource = ref.read(rfidCardFirestoreDataSourceProvider);
+      await datasource.deleteAllCards();
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xoá tất cả thẻ'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi xoá tất cả: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeClass = context.screenSizeClass;
+    
+    return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header with gradient background
@@ -760,11 +1106,11 @@ class _DeleteCardModalState extends State<_DeleteCardModal> {
             // User list with ScrollView - max 3 items visible
             Container(
               constraints: BoxConstraints(
-                maxHeight: _users.isEmpty 
+                maxHeight: widget.cards.isEmpty 
                     ? 100 
                     : (sizeClass == ScreenSizeClass.expanded ? 240.0 : 210.0), // Height for ~3 items
               ),
-              child: _users.isEmpty
+              child: widget.cards.isEmpty
                   ? Center(
                       child: Padding(
                         padding: EdgeInsets.all(
@@ -787,18 +1133,18 @@ class _DeleteCardModalState extends State<_DeleteCardModal> {
                             ? AppSpacing.lg 
                             : AppSpacing.md,
                       ),
-                      itemCount: _users.length,
+                      itemCount: widget.cards.length,
                       separatorBuilder: (context, index) => Divider(
                         height: AppSpacing.md,
                         thickness: 1,
                         color: AppColors.borderSoft,
                       ),
                       itemBuilder: (context, index) {
-                        final user = _users[index];
+                        final card = widget.cards[index];
                         return _UserListItem(
-                          name: user['name'] as String,
-                          isActive: user['isActive'] as bool,
-                          onDelete: () => _deleteUser(index),
+                          name: card.ownerName,
+                          isActive: card.isActive,
+                          onDelete: () => _deleteCard(card.id, card.ownerName),
                         );
                       },
                     ),
@@ -827,16 +1173,14 @@ class _DeleteCardModalState extends State<_DeleteCardModal> {
                     child: _ModalButton(
                       label: 'Xoá Tất Cả',
                       backgroundColor: Colors.red,
-                      onTap: _users.isEmpty ? () {} : _deleteAll,
+                      onTap: widget.cards.isEmpty ? () {} : _deleteAll,
                     ),
                   ),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
+        );
   }
 }
 
