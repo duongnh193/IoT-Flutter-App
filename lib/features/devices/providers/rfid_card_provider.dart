@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/datasources/rfid_card_firestore_datasource.dart';
+import '../data/datasources/access_log_firestore_datasource.dart';
 
 /// Provider for RFID card Firestore datasource
 final rfidCardFirestoreDataSourceProvider =
@@ -57,4 +58,39 @@ Stream<List<RfidCardDocument>> _createEagerStream(
 final isAddingCardProvider = StateProvider<bool>((ref) {
   return false;
 });
+
+/// Provider for access log Firestore datasource
+final accessLogFirestoreDataSourceProvider =
+    Provider<AccessLogFirestoreDataSource>((ref) {
+  return AccessLogFirestoreDataSource();
+});
+
+/// Provider to watch access logs
+/// Fetches data immediately, then streams real-time updates
+final accessLogsProvider =
+    StreamProvider<List<AccessLogDocument>>((ref) {
+  final datasource = ref.watch(accessLogFirestoreDataSourceProvider);
+  
+  // Create a stream that first fetches data immediately, then streams updates
+  return _createAccessLogEagerStream(datasource, ref);
+});
+
+Stream<List<AccessLogDocument>> _createAccessLogEagerStream(
+  AccessLogFirestoreDataSource datasource,
+  Ref ref,
+) async* {
+  // First, fetch data immediately to avoid loading delay
+  try {
+    final logs = await datasource.getAccessLogs();
+    yield logs;
+  } catch (e) {
+    // If fetch fails, yield empty list
+    yield [];
+  }
+  
+  // Then stream real-time updates
+  await for (final logs in datasource.watchAccessLogs()) {
+    yield logs;
+  }
+}
 

@@ -125,12 +125,7 @@ class _GateRoomScreenState extends ConsumerState<GateRoomScreen> {
           );
         }
 
-        // Mock access history
-        const accessHistory = [
-          ('Nguyễn Đức Thịnh', '12:20'),
-          ('Nguyễn Đức Hoàng', '08:12'),
-          ('Đình Trọng Thành', '3:34'),
-        ];
+        // Access history will be loaded from Firestore via provider
 
         return ContentScaffold(
           title: gateRoom.name,
@@ -192,7 +187,7 @@ class _GateRoomScreenState extends ConsumerState<GateRoomScreen> {
                 SizedBox(height: sectionSpacing),
                 
                 // Access history list
-                _AccessHistoryList(history: accessHistory),
+                const _AccessHistoryList(),
                 
                 SizedBox(height: dividerSpacing),
                 
@@ -373,55 +368,112 @@ class _DeviceRow extends ConsumerWidget {
   }
 }
 
-/// Access history list
-class _AccessHistoryList extends StatelessWidget {
-  const _AccessHistoryList({required this.history});
+/// Access history list - displays logs from Firestore
+class _AccessHistoryList extends ConsumerWidget {
+  const _AccessHistoryList();
 
-  final List<(String, String)> history;
+  /// Convert timestamp (seconds since epoch, UTC) to UTC+7 formatted time string
+  String _formatTime(int timestamp) {
+    // Convert seconds to DateTime (assume timestamp is in UTC)
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000, isUtc: true);
+    // Add 7 hours to convert to UTC+7 (Vietnam timezone)
+    final vietnamTime = dateTime.add(const Duration(hours: 7));
+    // Format as HH:mm
+    final hour = vietnamTime.hour.toString().padLeft(2, '0');
+    final minute = vietnamTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final sizeClass = context.screenSizeClass;
+    final accessLogsAsync = ref.watch(accessLogsProvider);
     
-    return Column(
-      children: history.map((entry) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: sizeClass == ScreenSizeClass.compact 
-                ? AppSpacing.md 
-                : AppSpacing.lg,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  entry.$1,
-                  style: context.responsiveBodyM.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 16,
-                color: AppColors.borderSoft,
-                margin: EdgeInsets.symmetric(
-                  horizontal: sizeClass == ScreenSizeClass.compact 
-                      ? AppSpacing.md 
-                      : AppSpacing.lg,
-                ),
-              ),
-              Text(
-                entry.$2,
+    return accessLogsAsync.when(
+      data: (logs) {
+        if (logs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                'Chưa có lịch sử',
                 style: context.responsiveBodyM.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
-            ],
+            ),
+          );
+        }
+        
+        // Limit to max 5 visible items, rest scrollable
+        // Each item: text (~20px) + separator (12-16px) ≈ 32-36px per item
+        // 5 items ≈ 160-180px
+        final maxVisibleHeight = sizeClass == ScreenSizeClass.expanded 
+            ? 180.0  // ~5 items for expanded screens
+            : 160.0; // ~5 items for compact screens
+        
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxVisibleHeight),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: logs.length,
+            separatorBuilder: (context, index) => SizedBox(
+              height: sizeClass == ScreenSizeClass.compact 
+                  ? AppSpacing.md 
+                  : AppSpacing.lg,
+            ),
+            itemBuilder: (context, index) {
+              final log = logs[index];
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      log.userName,
+                      style: context.responsiveBodyM.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 16,
+                    color: AppColors.borderSoft,
+                    margin: EdgeInsets.symmetric(
+                      horizontal: sizeClass == ScreenSizeClass.compact 
+                          ? AppSpacing.md 
+                          : AppSpacing.lg,
+                    ),
+                  ),
+                  Text(
+                    _formatTime(log.time),
+                    style: context.responsiveBodyM.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
-      }).toList(),
+      },
+      loading: () => Center(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.lg),
+          child: const CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, stack) => Center(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.lg),
+          child: Text(
+            'Lỗi khi tải lịch sử',
+            style: context.responsiveBodyM.copyWith(
+              color: Colors.red,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
