@@ -41,20 +41,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       if (_isSignUp) {
+        // Đăng ký tài khoản
         await authController.signUpWithEmail(
           _emailController.text.trim(),
           _passwordController.text,
         );
+        
+        // Sign out để không tự động login
+        await authController.signOut();
+        
+        // Hiện thông báo thành công
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đăng ký thành công! Vui lòng đăng nhập.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          
+          // Chuyển về mode đăng nhập
+          setState(() {
+            _isSignUp = false;
+            _passwordController.clear();
+          });
+        }
       } else {
+        // Đăng nhập
         await authController.signInWithEmail(
           _emailController.text.trim(),
           _passwordController.text,
         );
-      }
 
-      // Navigate to success screen on successful auth
-      if (mounted) {
-        context.pushNamed(AppRoute.phoneSuccess.name);
+        // Navigate to success screen on successful login
+        if (mounted) {
+          context.pushNamed(AppRoute.phoneSuccess.name);
+        }
       }
     } catch (e) {
       if (mounted) {

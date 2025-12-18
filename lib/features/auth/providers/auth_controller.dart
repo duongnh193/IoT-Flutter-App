@@ -5,6 +5,7 @@ import '../domain/entities/user_entity.dart';
 import '../domain/usecases/sign_in_with_email_use_case.dart';
 import '../domain/usecases/sign_in_with_google_use_case.dart';
 import '../domain/usecases/sign_in_with_phone_use_case.dart';
+import '../domain/usecases/sign_out_use_case.dart';
 import '../domain/usecases/sign_up_with_email_use_case.dart';
 import '../domain/usecases/verify_otp_use_case.dart';
 
@@ -16,6 +17,7 @@ class AuthController extends StateNotifier<AsyncValue<UserEntity?>> {
     this._signInWithGoogleUseCase,
     this._signInWithEmailUseCase,
     this._signUpWithEmailUseCase,
+    this._signOutUseCase,
   ) : super(const AsyncValue.data(null));
 
   final SignInWithPhoneUseCase _signInWithPhoneUseCase;
@@ -23,6 +25,7 @@ class AuthController extends StateNotifier<AsyncValue<UserEntity?>> {
   final SignInWithGoogleUseCase _signInWithGoogleUseCase;
   final SignInWithEmailUseCase _signInWithEmailUseCase;
   final SignUpWithEmailUseCase _signUpWithEmailUseCase;
+  final SignOutUseCase _signOutUseCase;
 
   String? _verificationId;
 
@@ -99,6 +102,17 @@ class AuthController extends StateNotifier<AsyncValue<UserEntity?>> {
     }
   }
 
+  /// Sign out
+  Future<void> signOut() async {
+    try {
+      await _signOutUseCase();
+      state = const AsyncValue.data(null);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
+      rethrow;
+    }
+  }
+
   void clearError() {
     if (state.hasError) {
       state = AsyncValue.data(null);
@@ -114,6 +128,7 @@ final authControllerProvider =
     ref.watch(signInWithGoogleUseCaseProvider),
     ref.watch(signInWithEmailUseCaseProvider),
     ref.watch(signUpWithEmailUseCaseProvider),
+    ref.watch(signOutUseCaseProvider),
   );
 });
 
