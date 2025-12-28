@@ -384,6 +384,18 @@ class _AccessHistoryList extends ConsumerWidget {
     return '$hour:$minute';
   }
 
+  /// Format action string to Vietnamese display text
+  String _formatAction(String action) {
+    final actionUpper = action.toUpperCase();
+    if (actionUpper == 'OPEN' || actionUpper == 'MỞ' || actionUpper.contains('MỞ')) {
+      return 'Mở cổng';
+    } else if (actionUpper == 'CLOSE' || actionUpper == 'ĐÓNG' || actionUpper.contains('ĐÓNG')) {
+      return 'Đóng cổng';
+    }
+    // Fallback: return original action if not recognized
+    return action.isNotEmpty ? action : 'Không xác định';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sizeClass = context.screenSizeClass;
@@ -424,8 +436,10 @@ class _AccessHistoryList extends ConsumerWidget {
             ),
             itemBuilder: (context, index) {
               final log = logs[index];
+              // Fixed width for action to align separators
+              final actionWidth = sizeClass == ScreenSizeClass.expanded ? 90.0 : 80.0;
+              
               return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Text(
@@ -445,10 +459,35 @@ class _AccessHistoryList extends ConsumerWidget {
                           : AppSpacing.lg,
                     ),
                   ),
-                  Text(
-                    _formatTime(log.time),
-                    style: context.responsiveBodyM.copyWith(
-                      color: AppColors.textSecondary,
+                  SizedBox(
+                    width: actionWidth,
+                    child: Text(
+                      _formatAction(log.action),
+                      style: context.responsiveBodyM.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 16,
+                    color: AppColors.borderSoft,
+                    margin: EdgeInsets.symmetric(
+                      horizontal: sizeClass == ScreenSizeClass.compact 
+                          ? AppSpacing.md 
+                          : AppSpacing.lg,
+                    ),
+                  ),
+                  SizedBox(
+                    width: sizeClass == ScreenSizeClass.expanded ? 50.0 : 45.0,
+                    child: Text(
+                      _formatTime(log.time),
+                      style: context.responsiveBodyM.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.right,
                     ),
                   ),
                 ],

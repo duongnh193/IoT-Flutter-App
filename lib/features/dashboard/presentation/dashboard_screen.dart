@@ -170,13 +170,15 @@ class _StatusChipsSection extends ConsumerWidget {
             ? AppSpacing.md
             : AppSpacing.sm;
     
-    final chipCount = sizeClass == ScreenSizeClass.expanded ? 4 : 3;
-    
-    // Calculate chip width from available width
+    // Calculate chip width for top row (3 chips)
     final availableWidth = constraints.maxWidth;
     final totalPadding = chipPadding * 2;
-    final totalSpacing = chipSpacing * (chipCount - 1);
-    final chipWidth = (availableWidth - totalPadding - totalSpacing) / chipCount;
+    final topRowChipCount = sizeClass == ScreenSizeClass.expanded ? 3 : 2;
+    final topRowTotalSpacing = chipSpacing * (topRowChipCount - 1);
+    final topRowChipWidth = (availableWidth - totalPadding - topRowTotalSpacing) / topRowChipCount;
+    
+    // Air quality chip takes full width minus padding
+    final airChipWidth = availableWidth - totalPadding;
     
     // Watch environment data from Firebase
     final envAsync = ref.watch(environmentProvider);
@@ -201,130 +203,175 @@ class _StatusChipsSection extends ConsumerWidget {
           // Light level (with fallback)
           final lightValue = env.lightLevel ?? 'Đủ sáng';
           
-          return Wrap(
-            spacing: chipSpacing,
-            runSpacing: chipSpacing,
-            alignment: WrapAlignment.spaceBetween,
+          return Column(
             children: [
-              DashboardStatusChip(
-                icon: Icons.device_thermostat,
-                iconAsset: 'assets/icons/temperature.svg',
-                title: 'Nhiệt độ',
-                value: tempValue,
-                background: AppColors.white,
-                width: chipWidth,
+              // Top row: Nhiệt độ, Độ ẩm, Ánh sáng (if expanded)
+              Row(
+                children: [
+                  Expanded(
+                    child: DashboardStatusChip(
+                      icon: Icons.device_thermostat,
+                      iconAsset: 'assets/icons/temperature.svg',
+                      title: 'Nhiệt độ',
+                      value: tempValue,
+                      background: AppColors.white,
+                      width: topRowChipWidth,
+                    ),
+                  ),
+                  SizedBox(width: chipSpacing),
+                  Expanded(
+                    child: DashboardStatusChip(
+                      icon: Icons.water_drop_outlined,
+                      iconAsset: 'assets/icons/humidity.svg',
+                      title: 'Độ ẩm',
+                      value: humValue,
+                      background: AppColors.white,
+                      width: topRowChipWidth,
+                    ),
+                  ),
+                  if (sizeClass == ScreenSizeClass.expanded) ...[
+                    SizedBox(width: chipSpacing),
+                    Expanded(
+                      child: DashboardStatusChip(
+                        icon: Icons.wb_sunny_outlined,
+                        iconAsset: 'assets/icons/bright.svg',
+                        title: 'Ánh sáng',
+                        value: lightValue,
+                        background: AppColors.white,
+                        width: topRowChipWidth,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              DashboardStatusChip(
-                icon: Icons.water_drop_outlined,
-                iconAsset: 'assets/icons/humidity.svg',
-                title: 'Độ ẩm',
-                value: humValue,
-                background: AppColors.white,
-                width: chipWidth,
-              ),
-              DashboardStatusChip(
-                icon: Icons.eco_outlined,
-                iconAsset: 'assets/icons/air.svg',
-                title: 'Không khí',
-                value: airValue,
-                background: AppColors.white,
-                width: chipWidth,
-              ),
-              if (sizeClass == ScreenSizeClass.expanded)
-                DashboardStatusChip(
-                  icon: Icons.wb_sunny_outlined,
-                  iconAsset: 'assets/icons/bright.svg',
-                  title: 'Ánh sáng',
-                  value: lightValue,
+              SizedBox(height: chipSpacing),
+              // Bottom row: Không khí (centered, full width)
+              Center(
+                child: DashboardStatusChip(
+                  icon: Icons.eco_outlined,
+                  iconAsset: 'assets/icons/air.svg',
+                  title: 'Không khí',
+                  value: airValue,
                   background: AppColors.white,
-                  width: chipWidth,
+                  width: airChipWidth,
                 ),
+              ),
             ],
           );
         },
         loading: () {
           // Show loading placeholders
-          return Wrap(
-            spacing: chipSpacing,
-            runSpacing: chipSpacing,
-            alignment: WrapAlignment.spaceBetween,
+          return Column(
             children: [
-              DashboardStatusChip(
-                icon: Icons.device_thermostat,
-                iconAsset: 'assets/icons/temperature.svg',
-                title: 'Nhiệt độ',
-                value: '...',
-                background: AppColors.white,
-                width: chipWidth,
+              // Top row: Nhiệt độ, Độ ẩm, Ánh sáng (if expanded)
+              Row(
+                children: [
+                  Expanded(
+                    child: DashboardStatusChip(
+                      icon: Icons.device_thermostat,
+                      iconAsset: 'assets/icons/temperature.svg',
+                      title: 'Nhiệt độ',
+                      value: '...',
+                      background: AppColors.white,
+                      width: topRowChipWidth,
+                    ),
+                  ),
+                  SizedBox(width: chipSpacing),
+                  Expanded(
+                    child: DashboardStatusChip(
+                      icon: Icons.water_drop_outlined,
+                      iconAsset: 'assets/icons/humidity.svg',
+                      title: 'Độ ẩm',
+                      value: '...',
+                      background: AppColors.white,
+                      width: topRowChipWidth,
+                    ),
+                  ),
+                  if (sizeClass == ScreenSizeClass.expanded) ...[
+                    SizedBox(width: chipSpacing),
+                    Expanded(
+                      child: DashboardStatusChip(
+                        icon: Icons.wb_sunny_outlined,
+                        iconAsset: 'assets/icons/bright.svg',
+                        title: 'Ánh sáng',
+                        value: '...',
+                        background: AppColors.white,
+                        width: topRowChipWidth,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              DashboardStatusChip(
-                icon: Icons.water_drop_outlined,
-                iconAsset: 'assets/icons/humidity.svg',
-                title: 'Độ ẩm',
-                value: '...',
-                background: AppColors.white,
-                width: chipWidth,
-              ),
-              DashboardStatusChip(
-                icon: Icons.eco_outlined,
-                iconAsset: 'assets/icons/air.svg',
-                title: 'Không khí',
-                value: '...',
-                background: AppColors.white,
-                width: chipWidth,
-              ),
-              if (sizeClass == ScreenSizeClass.expanded)
-                DashboardStatusChip(
-                  icon: Icons.wb_sunny_outlined,
-                  iconAsset: 'assets/icons/bright.svg',
-                  title: 'Ánh sáng',
+              SizedBox(height: chipSpacing),
+              // Bottom row: Không khí (centered, full width)
+              Center(
+                child: DashboardStatusChip(
+                  icon: Icons.eco_outlined,
+                  iconAsset: 'assets/icons/air.svg',
+                  title: 'Không khí',
                   value: '...',
                   background: AppColors.white,
-                  width: chipWidth,
+                  width: airChipWidth,
                 ),
+              ),
             ],
           );
         },
         error: (error, stack) {
           // Show error placeholders with fallback values
-          return Wrap(
-            spacing: chipSpacing,
-            runSpacing: chipSpacing,
-            alignment: WrapAlignment.spaceBetween,
+          return Column(
             children: [
-              DashboardStatusChip(
-                icon: Icons.device_thermostat,
-                iconAsset: 'assets/icons/temperature.svg',
-                title: 'Nhiệt độ',
-                value: '28°C',
-                background: AppColors.white,
-                width: chipWidth,
+              // Top row: Nhiệt độ, Độ ẩm, Ánh sáng (if expanded)
+              Row(
+                children: [
+                  Expanded(
+                    child: DashboardStatusChip(
+                      icon: Icons.device_thermostat,
+                      iconAsset: 'assets/icons/temperature.svg',
+                      title: 'Nhiệt độ',
+                      value: '28°C',
+                      background: AppColors.white,
+                      width: topRowChipWidth,
+                    ),
+                  ),
+                  SizedBox(width: chipSpacing),
+                  Expanded(
+                    child: DashboardStatusChip(
+                      icon: Icons.water_drop_outlined,
+                      iconAsset: 'assets/icons/humidity.svg',
+                      title: 'Độ ẩm',
+                      value: '70%',
+                      background: AppColors.white,
+                      width: topRowChipWidth,
+                    ),
+                  ),
+                  if (sizeClass == ScreenSizeClass.expanded) ...[
+                    SizedBox(width: chipSpacing),
+                    Expanded(
+                      child: DashboardStatusChip(
+                        icon: Icons.wb_sunny_outlined,
+                        iconAsset: 'assets/icons/bright.svg',
+                        title: 'Ánh sáng',
+                        value: 'Đủ sáng',
+                        background: AppColors.white,
+                        width: topRowChipWidth,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              DashboardStatusChip(
-                icon: Icons.water_drop_outlined,
-                iconAsset: 'assets/icons/humidity.svg',
-                title: 'Độ ẩm',
-                value: '70%',
-                background: AppColors.white,
-                width: chipWidth,
-              ),
-              DashboardStatusChip(
-                icon: Icons.eco_outlined,
-                iconAsset: 'assets/icons/air.svg',
-                title: 'Không khí',
-                value: 'Trong lành',
-                background: AppColors.white,
-                width: chipWidth,
-              ),
-              if (sizeClass == ScreenSizeClass.expanded)
-                DashboardStatusChip(
-                  icon: Icons.wb_sunny_outlined,
-                  iconAsset: 'assets/icons/bright.svg',
-                  title: 'Ánh sáng',
-                  value: 'Đủ sáng',
+              SizedBox(height: chipSpacing),
+              // Bottom row: Không khí (centered, full width)
+              Center(
+                child: DashboardStatusChip(
+                  icon: Icons.eco_outlined,
+                  iconAsset: 'assets/icons/air.svg',
+                  title: 'Không khí',
+                  value: 'Trong lành',
                   background: AppColors.white,
-                  width: chipWidth,
+                  width: airChipWidth,
                 ),
+              ),
             ],
           );
         },
