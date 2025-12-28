@@ -8,6 +8,7 @@ import '../../../shared/layout/content_scaffold.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../auth/providers/auth_session_provider.dart';
 import '../providers/environment_provider.dart';
+import '../providers/scenario_provider.dart';
 import '../widgets/dashboard_cards.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -55,20 +56,20 @@ class DashboardScreen extends ConsumerWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: DashboardShortcutCard(
+                    child: _ScenarioShortcutCard(
                       icon: Icons.exit_to_app,
                       title: 'Rời nhà',
                       background: AppColors.coralSoft,
-                      onTap: () {},
+                      scenarioId: 'ROI_NHA',
                     ),
                   ),
                   SizedBox(width: spacing),
                   Expanded(
-                    child: DashboardShortcutCard(
+                    child: _ScenarioShortcutCard(
                       icon: Icons.home_outlined,
                       title: 'Về nhà',
                       background: AppColors.skySoft,
-                      onTap: () {},
+                      scenarioId: 'VE_NHA',
                     ),
                   ),
                 ],
@@ -375,6 +376,104 @@ class _StatusChipsSection extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Scenario shortcut card that executes scenario when tapped
+class _ScenarioShortcutCard extends ConsumerWidget {
+  const _ScenarioShortcutCard({
+    required this.icon,
+    required this.title,
+    required this.background,
+    required this.scenarioId,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color background;
+  final String scenarioId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sizeClass = context.screenSizeClass;
+    final minHeight = sizeClass == ScreenSizeClass.expanded 
+        ? 140.0
+        : sizeClass == ScreenSizeClass.medium
+            ? 130.0
+            : 120.0;
+    
+    final iconRadius = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.cardRadius + 2
+        : AppSpacing.cardRadius;
+    
+    final padding = sizeClass == ScreenSizeClass.expanded 
+        ? AppSpacing.xl
+        : AppSpacing.lg;
+
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        splashColor: AppColors.primary.withAlpha(30),
+        highlightColor: AppColors.primary.withAlpha(20),
+        onTap: () async {
+          // Execute scenario
+          try {
+            await ref.read(executeScenarioProvider(scenarioId).future);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã thực hiện: $title'),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Lỗi: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        },
+        child: Container(
+          constraints: BoxConstraints(minHeight: minHeight),
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: iconRadius,
+                backgroundColor: Colors.white,
+                child: Icon(
+                  icon,
+                  color: AppColors.primary,
+                  size: iconRadius * 1.2,
+                ),
+              ),
+              SizedBox(height: sizeClass == ScreenSizeClass.compact 
+                  ? AppSpacing.sm 
+                  : AppSpacing.md),
+              Text(
+                title,
+                style: context.responsiveBodyM.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

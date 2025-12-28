@@ -305,11 +305,15 @@ class _EnergyBarCard extends StatelessWidget {
     final isYearPeriod = detail.period == AnalysisPeriod.year;
     // Tính toán width cho chart: mỗi bar cần ~100-120px để có đủ không gian
     final barWidth = sizeClass == ScreenSizeClass.expanded ? 24.0 : 20.0;
-    // Tăng groupsSpace để labels X không bị sát nhau
-    final groupsSpace = sizeClass == ScreenSizeClass.expanded ? 32.0 : 28.0;
+    // Tăng groupsSpace để labels X không bị sát nhau - tăng nhiều hơn cho year period
+    final groupsSpace = isYearPeriod
+        ? (sizeClass == ScreenSizeClass.expanded ? 48.0 : 42.0)
+        : (sizeClass == ScreenSizeClass.expanded ? 32.0 : 28.0);
     // Mỗi bar group cần khoảng 100-120px để có đủ không gian cho bar, spacing và label
-    // Tăng width để đảm bảo có đủ không gian cho 12 tháng
-    final barGroupWidth = sizeClass == ScreenSizeClass.expanded ? 120.0 : 110.0;
+    // Tăng width để đảm bảo có đủ không gian cho 12 tháng và khoảng cách giữa các labels
+    final barGroupWidth = isYearPeriod
+        ? (sizeClass == ScreenSizeClass.expanded ? 140.0 : 130.0)
+        : (sizeClass == ScreenSizeClass.expanded ? 120.0 : 110.0);
     // Tính chart width: số bars * width mỗi bar + padding bên phải
     // Đảm bảo có đủ không gian cho tất cả bars (12 tháng)
     final rightPadding = sizeClass == ScreenSizeClass.expanded ? 32.0 : 24.0;
