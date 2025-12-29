@@ -1,37 +1,31 @@
-import '../data/datasources/scenario_firestore_datasource.dart';
 import '../../devices/data/datasources/device_firebase_datasource.dart';
 
-/// Service to execute scenarios
-/// Reads scenario from Firestore and applies actions to Realtime Database
+/// Service to execute scenes
+/// Sets scene_control/type in Realtime Database using PUT method
 class ScenarioService {
   ScenarioService({
-    required this.scenarioDataSource,
     required this.deviceDataSource,
   });
 
-  final ScenarioFirestoreDataSource scenarioDataSource;
   final DeviceFirebaseDataSource deviceDataSource;
 
-  /// Execute a scenario by ID
-  /// Reads scenario from Firestore and applies all actions to Realtime Database
-  /// Uses PUT (set) method for firmware compatibility, consistent with device control
-  Future<void> executeScenario(String scenarioId) async {
-    // Get scenario from Firestore
-    final scenario = await scenarioDataSource.getScenario(scenarioId);
-    if (scenario == null) {
-      throw Exception('Scenario not found: $scenarioId');
+  /// Execute scene by setting scene_control/type
+  /// Uses PUT (set) method for firmware compatibility
+  /// scene-home = Về nhà, scene-away = Rời nhà
+  Future<void> executeScene(String sceneType) async {
+    // Validate sceneType
+    if (sceneType != 'scene-home' && sceneType != 'scene-away') {
+      throw Exception('Invalid sceneType: $sceneType. Must be "scene-home" or "scene-away"');
     }
-
-    // Apply each action using PUT (set) method for firmware compatibility
-    // This matches the pattern used by device controls (setFanCommand, setLightCommand, etc.)
-    for (final action in scenario.actions) {
-      // Construct Firebase path: device_path/field
-      final path = '${action.devicePath}/${action.field}';
-      
-      // Use set() (PUT) instead of update() (PATCH) for firmware compatibility
-      // This ensures consistent behavior with device control methods
-      await deviceDataSource.setDeviceValue(path, action.value);
-    }
+    
+    // Debug: Print sceneType to verify
+    print('Setting scene_control/type = $sceneType');
+    
+    // Set scene_control/type using PUT (set) method
+    await deviceDataSource.setDeviceValue('scene_control/type', sceneType);
+    
+    // Debug: Confirm value was set
+    print('Successfully set scene_control/type = $sceneType');
   }
 }
 

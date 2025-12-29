@@ -222,8 +222,32 @@ class RoomDevicesScreen extends ConsumerWidget {
                   _DeviceRow(
                     device: doorDevice,
                     status: doorDevice.isOn ? 'Đang Mở' : 'Đang Đóng',
-                    onToggle: () {
-                      ref.read(deviceControllerProvider.notifier).toggle(doorDevice.id);
+                    onToggle: doorDevice.isOn ? null : () async {
+                      // Chỉ cho phép mở cửa từ UI
+                      try {
+                        await ref.read(deviceControllerProvider.notifier).toggle(doorDevice.id);
+                      } catch (e) {
+                        if (context.mounted) {
+                          final errorMsg = e.toString();
+                          if (errorMsg.contains('DOOR_CLOSE_NOT_ALLOWED')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Vui lòng đóng cửa bằng cách thủ công'),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Lỗi: $e'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      }
                     },
                   ),
                   Divider(
@@ -427,8 +451,46 @@ class RoomDevicesScreen extends ConsumerWidget {
                   child: DeviceCard(
                     device: device,
                     compact: false,
-                    onToggle: shouldShowToggle ? () {
-                      ref.read(deviceControllerProvider.notifier).toggle(device.id);
+                    onToggle: shouldShowToggle ? () async {
+                      // Special handling for door-living: only allow opening
+                      if (device.id == 'door-living' && device.isOn) {
+                        // Cửa đang mở - không cho phép đóng từ UI
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Vui lòng đóng cửa bằng cách thủ công'),
+                              backgroundColor: Colors.orange,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                      
+                      try {
+                        await ref.read(deviceControllerProvider.notifier).toggle(device.id);
+                      } catch (e) {
+                        if (context.mounted) {
+                          final errorMsg = e.toString();
+                          if (errorMsg.contains('DOOR_CLOSE_NOT_ALLOWED')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Vui lòng đóng cửa bằng cách thủ công'),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Lỗi: $e'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      }
                     } : null,
                     controlBuilder: controlBuilder,
                   ),
@@ -517,6 +579,9 @@ class _DeviceRow extends ConsumerWidget {
     final sizeClass = context.screenSizeClass;
     final iconRadius = sizeClass == ScreenSizeClass.expanded ? 28.0 : 24.0;
     final iconSize = sizeClass == ScreenSizeClass.expanded ? 32.0 : 28.0;
+    
+    // Disable switch nếu cửa đang mở (door-living) - chỉ cho phép mở từ UI
+    final isDoorAndOpen = device.id == 'door-living' && isOn;
 
     return Row(
       children: [
@@ -557,13 +622,25 @@ class _DeviceRow extends ConsumerWidget {
           ),
         ),
         
-        // Toggle switch (ẩn nếu onToggle là null)
-        if (onToggle != null)
+        // Toggle switch 
+        if (onToggle != null || isDoorAndOpen)
           Transform.scale(
             scale: sizeClass == ScreenSizeClass.expanded ? 1.2 : 1.0,
             child: Switch(
               value: isOn,
-              onChanged: (_) => onToggle!(),
+              onChanged: isDoorAndOpen 
+                  ? (_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng đóng cửa bằng cách thủ công'),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  : onToggle != null 
+                      ? (_) => onToggle!() 
+                      : null,
               activeTrackColor: AppColors.primary,
               activeThumbColor: Colors.white,
               inactiveTrackColor: AppColors.borderSoft,

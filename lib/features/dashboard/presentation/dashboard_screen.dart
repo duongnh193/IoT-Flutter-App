@@ -60,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
                       icon: Icons.exit_to_app,
                       title: 'Rời nhà',
                       background: AppColors.coralSoft,
-                      scenarioId: 'ROI_NHA',
+                      sceneType: 'scene-away',
                     ),
                   ),
                   SizedBox(width: spacing),
@@ -69,7 +69,7 @@ class DashboardScreen extends ConsumerWidget {
                       icon: Icons.home_outlined,
                       title: 'Về nhà',
                       background: AppColors.skySoft,
-                      scenarioId: 'VE_NHA',
+                      sceneType: 'scene-home',
                     ),
                   ),
                 ],
@@ -381,19 +381,19 @@ class _StatusChipsSection extends ConsumerWidget {
   }
 }
 
-/// Scenario shortcut card that executes scenario when tapped
+/// Scenario shortcut card that executes scene when tapped
 class _ScenarioShortcutCard extends ConsumerWidget {
   const _ScenarioShortcutCard({
     required this.icon,
     required this.title,
     required this.background,
-    required this.scenarioId,
+    required this.sceneType,
   });
 
   final IconData icon;
   final String title;
   final Color background;
-  final String scenarioId;
+  final String sceneType;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -420,9 +420,9 @@ class _ScenarioShortcutCard extends ConsumerWidget {
         splashColor: AppColors.primary.withAlpha(30),
         highlightColor: AppColors.primary.withAlpha(20),
         onTap: () async {
-          // Execute scenario
+          // Execute scene by setting scene_control/type
           try {
-            await ref.read(executeScenarioProvider(scenarioId).future);
+            await ref.read(executeSceneProvider(sceneType).future);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

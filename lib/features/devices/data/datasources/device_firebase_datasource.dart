@@ -125,11 +125,21 @@ class DeviceFirebaseDataSource {
     await _database.child(path).set(command);
   }
 
+  /// Set door command using PUT (for firmware compatibility)
+  /// Uses set() instead of update() to send HTTP PUT request
+  /// Gửi 'command' (UI command) lên Firebase, phần cứng sẽ đọc và cập nhật 'is_open'
+  Future<void> setDoorCommand(String path, int command) async {
+    await _database.child(path).set(command);
+  }
+
   /// Set device value using PUT (for firmware compatibility)
   /// Generic method to set any device path/value using PUT (set) method
   /// Used by scenarios to maintain consistency with device control methods
   Future<void> setDeviceValue(String path, dynamic value) async {
+    // Debug: Print path and value to verify
+    print('setDeviceValue: path=$path, value=$value (type: ${value.runtimeType})');
     await _database.child(path).set(value);
+    print('setDeviceValue: Successfully set $path = $value');
   }
 
   /// Get Firebase path for purifier command (UI command)
@@ -138,6 +148,17 @@ class DeviceFirebaseDataSource {
     switch (deviceId) {
       case 'air-purifier-living':
         return 'living_room/purifier/command'; // UI command path
+      default:
+        return null;
+    }
+  }
+
+  /// Get Firebase path for door command (UI command)
+  /// Path này dùng để gửi 'command' từ UI lên Firebase
+  String? getDoorCommandPath(String deviceId) {
+    switch (deviceId) {
+      case 'door-living':
+        return 'living_room/door/command'; // UI command path
       default:
         return null;
     }
@@ -363,8 +384,9 @@ class DeviceFirebaseDataSource {
           'gate/last_updated': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         };
       case 'door-living':
+        // Chỉ update 'command' (UI command) - phần cứng sẽ đọc và cập nhật 'is_open'
+        // Không được update 'is_open' từ UI (đây là giá trị từ hardware)
         return {
-          'living_room/door/is_open': newState,
           'living_room/door/command': newState ? 1 : 0,
         };
       case 'light-living':

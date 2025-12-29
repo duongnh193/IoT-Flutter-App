@@ -68,6 +68,9 @@ class _CardBody extends StatelessWidget {
     final bgColor = isOn
         ? colorScheme.primary.withAlpha(31)
         : colorScheme.surfaceContainerHigh;
+    
+    // Disable switch nếu cửa đang mở (door-living) - chỉ cho phép mở từ UI
+    final isDoorAndOpen = device.id == 'door-living' && isOn;
 
     return AnimatedContainer(
       width: double.infinity,
@@ -105,14 +108,27 @@ class _CardBody extends StatelessWidget {
                   color: isOn ? colorScheme.primary : colorScheme.onSurface,
                 ),
               ),
-              if (onToggle != null)
+              if (onToggle != null || isDoorAndOpen)
                 Transform.scale(
                   scale: 0.9,
                   child: Switch(
                     value: isOn,
                     activeThumbColor: colorScheme.onPrimary,
                     activeTrackColor: colorScheme.primary,
-                    onChanged: (_) => onToggle!(),
+                    onChanged: isDoorAndOpen 
+                        ? (_) {
+                            // Khi cửa đang mở, hiển thị thông báo thay vì toggle
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Vui lòng đóng cửa bằng cách thủ công'),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        : onToggle != null 
+                            ? (_) => onToggle!() 
+                            : null,
                   ),
                 ),
             ],

@@ -61,6 +61,23 @@ class DeviceRemoteDataSourceImpl implements DeviceRemoteDataSource {
 
   @override
   Future<void> updateDeviceState(String deviceId, bool newState) async {
+    // Use PUT (set) for door-living to match firmware compatibility
+    // Door chỉ cho phép mở (command = 1), không cho phép đóng từ UI
+    if (deviceId == 'door-living') {
+      // Chỉ gửi command = 1 khi mở cửa
+      if (newState) {
+        final path = _firebaseDataSource.getDoorCommandPath(deviceId);
+        if (path != null) {
+          await _firebaseDataSource.setDoorCommand(path, 1);
+          return;
+        }
+      } else {
+        // Không cho phép đóng từ UI - throw exception để UI hiển thị thông báo
+        throw Exception('DOOR_CLOSE_NOT_ALLOWED');
+      }
+    }
+    
+    // For other devices, use update method
     final updates = _firebaseDataSource.getDeviceToggleUpdates(
       deviceId,
       newState,

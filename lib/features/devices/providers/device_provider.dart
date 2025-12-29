@@ -130,6 +130,44 @@ class DeviceController extends StateNotifier<AsyncValue<List<presentation.Device
     final currentDevices = state.value;
     if (currentDevices == null) return;
 
+    // Special handling for door-living: only allow opening, not closing
+    if (id == 'door-living') {
+      final currentDevice = currentDevices.firstWhere(
+        (d) => d.id == id,
+        orElse: () => throw Exception('Device not found'),
+      );
+      
+      // If door is already open (isOn = true), don't allow closing from UI
+      if (currentDevice.isOn) {
+        throw Exception('DOOR_CLOSE_NOT_ALLOWED');
+      }
+      
+      // If door is closed (isOn = false), allow opening
+      // Track this toggle to prevent premature stream override
+      _pendingToggles[id] = DateTime.now();
+
+      // Optimistic update - set to open
+      final updatedDevices = currentDevices.map((device) {
+        if (device.id == id) {
+          return device.copyWith(isOn: true);
+        }
+        return device;
+      }).toList();
+      state = AsyncValue.data(updatedDevices);
+
+      try {
+        // Call use case - this will update Firebase with command = 1
+        await _toggleDeviceUseCase(id);
+      } catch (e) {
+        // Revert on error - restore previous state and remove from pending
+        _pendingToggles.remove(id);
+        state = AsyncValue.data(currentDevices);
+        rethrow;
+      }
+      return;
+    }
+
+    // For other devices, use normal toggle logic
     // Track this toggle to prevent premature stream override
     _pendingToggles[id] = DateTime.now();
 
