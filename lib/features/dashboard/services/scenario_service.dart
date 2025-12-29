@@ -14,6 +14,7 @@ class ScenarioService {
 
   /// Execute a scenario by ID
   /// Reads scenario from Firestore and applies all actions to Realtime Database
+  /// Uses PUT (set) method for firmware compatibility, consistent with device control
   Future<void> executeScenario(String scenarioId) async {
     // Get scenario from Firestore
     final scenario = await scenarioDataSource.getScenario(scenarioId);
@@ -21,17 +22,15 @@ class ScenarioService {
       throw Exception('Scenario not found: $scenarioId');
     }
 
-    // Build update map from actions
-    final updates = <String, dynamic>{};
+    // Apply each action using PUT (set) method for firmware compatibility
+    // This matches the pattern used by device controls (setFanCommand, setLightCommand, etc.)
     for (final action in scenario.actions) {
       // Construct Firebase path: device_path/field
       final path = '${action.devicePath}/${action.field}';
-      updates[path] = action.value;
-    }
-
-    // Apply all updates to Realtime Database at once
-    if (updates.isNotEmpty) {
-      await deviceDataSource.updateDevice('', updates);
+      
+      // Use set() (PUT) instead of update() (PATCH) for firmware compatibility
+      // This ensures consistent behavior with device control methods
+      await deviceDataSource.setDeviceValue(path, action.value);
     }
   }
 }

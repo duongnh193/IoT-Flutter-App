@@ -125,6 +125,13 @@ class DeviceFirebaseDataSource {
     await _database.child(path).set(command);
   }
 
+  /// Set device value using PUT (for firmware compatibility)
+  /// Generic method to set any device path/value using PUT (set) method
+  /// Used by scenarios to maintain consistency with device control methods
+  Future<void> setDeviceValue(String path, dynamic value) async {
+    await _database.child(path).set(value);
+  }
+
   /// Get Firebase path for purifier command (UI command)
   /// Path này dùng để gửi 'command' từ UI lên Firebase
   String? getPurifierCommandPath(String deviceId) {

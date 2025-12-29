@@ -23,7 +23,8 @@ final firebaseAuthProvider = Provider<firebase_auth.FirebaseAuth>((ref) {
 final googleSignInProvider = Provider<GoogleSignIn>((ref) {
   return GoogleSignIn(
     // Use the OAuth client ID from google-services.json for Android
-    // Client ID: 81741509116-gm22sflk4qqs00jbehmca799j09e23rq.apps.googleusercontent.com
+    // Web client ID (client_type: 3) for server-side authentication
+    serverClientId: '81741509116-gm22sflk4qqs00jbehmca799j09e23rq.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
 });
