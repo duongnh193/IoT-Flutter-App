@@ -421,8 +421,10 @@ class _ScenarioShortcutCard extends ConsumerWidget {
         highlightColor: AppColors.primary.withAlpha(20),
         onTap: () async {
           // Execute scene by setting scene_control/type
+          // Gọi service trực tiếp để tránh FutureProvider cache
           try {
-            await ref.read(executeSceneProvider(sceneType).future);
+            final service = ref.read(scenarioServiceProvider);
+            await service.executeScene(sceneType);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
