@@ -19,7 +19,6 @@ class GateControlScreen extends ConsumerStatefulWidget {
 
 class _GateControlScreenState extends ConsumerState<GateControlScreen>
     with SingleTickerProviderStateMixin {
-  late bool isOpen;
   late AnimationController _controller;
 
   final history = const [
@@ -31,13 +30,34 @@ class _GateControlScreenState extends ConsumerState<GateControlScreen>
   @override
   void initState() {
     super.initState();
-    isOpen = widget.device.isOn;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
       lowerBound: 0.0,
       upperBound: 1.0,
-    )..value = isOpen ? 1.0 : 0.0;
+    );
+    // Cập nhật animation dựa trên trạng thái ban đầu
+    _updateAnimation();
+  }
+
+  void _updateAnimation() {
+    // Logic đã được đảo ở datasource: is_open=false -> isOn=true (mở), is_open=true -> isOn=false (đóng)
+    // Vậy isOn=true nghĩa là mở, isOn=false nghĩa là đóng
+    final isOpen = widget.device.isOn;
+    if (isOpen) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void didUpdateWidget(GateControlScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Cập nhật animation khi device state thay đổi
+    if (oldWidget.device.isOn != widget.device.isOn) {
+      _updateAnimation();
+    }
   }
 
   @override
@@ -46,91 +66,111 @@ class _GateControlScreenState extends ConsumerState<GateControlScreen>
     super.dispose();
   }
 
-  void _toggleGate() {
-    final notifier = ref.read(deviceControllerProvider.notifier);
-    setState(() {
-      isOpen = !isOpen;
-      if (isOpen) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    });
-    notifier.toggle(widget.device.id);
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary,
-              AppColors.panel,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.black87),
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    Text(
-                      widget.device.name,
-                      style: AppTypography.titleM.copyWith(
-                        fontSize: 20,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
+    // Watch device state từ provider để cập nhật realtime
+    final devicesAsync = ref.watch(deviceControllerProvider);
+    
+    return devicesAsync.when(
+      data: (devices) {
+        // Tìm device gate-main trong danh sách
+        final gateDevice = devices.firstWhere(
+          (d) => d.id == widget.device.id,
+          orElse: () => widget.device,
+        );
+        
+        // Cập nhật animation khi device state thay đổi
+        // Logic đã được đảo ở datasource: is_open=false -> isOn=true (mở), is_open=true -> isOn=false (đóng)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final isOpen = gateDevice.isOn; // isOn=true nghĩa là mở
+          if (isOpen != (_controller.value > 0.5)) {
+            if (isOpen) {
+              _controller.forward();
+            } else {
+              _controller.reverse();
+            }
+          }
+        });
+        
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.primary,
+                  AppColors.panel,
+                ],
               ),
-              _GateAnimation(controller: _controller),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: AppColors.panel,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(28),
-                      topRight: Radius.circular(28),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 18),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _DeviceHeader(
-                          device: widget.device,
-                          isOpen: isOpen,
-                          onToggle: _toggleGate,
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new,
+                              color: Colors.black87),
+                          onPressed: () => Navigator.of(context).maybePop(),
                         ),
-                        AppSpacing.h20,
-                        _HistoryList(history: history),
-                        AppSpacing.h20,
-                        _ActionButtons(),
+                        Text(
+                          gateDevice.name,
+                          style: AppTypography.titleM.copyWith(
+                            fontSize: 20,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 48),
                       ],
                     ),
                   ),
-                ),
+                  _GateAnimation(controller: _controller),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: AppColors.panel,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 18),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _DeviceHeader(
+                              device: gateDevice,
+                            ),
+                            AppSpacing.h20,
+                            _HistoryList(history: history),
+                            AppSpacing.h20,
+                            _ActionButtons(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
+        );
+      },
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => Scaffold(
+        body: Center(
+          child: Text('Lỗi: $error'),
         ),
       ),
     );
@@ -140,13 +180,9 @@ class _GateControlScreenState extends ConsumerState<GateControlScreen>
 class _DeviceHeader extends StatelessWidget {
   const _DeviceHeader({
     required this.device,
-    required this.isOpen,
-    required this.onToggle,
   });
 
   final Device device;
-  final bool isOpen;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -187,21 +223,13 @@ class _DeviceHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isOpen ? 'Đang mở' : 'Đang đóng',
+                  // Logic đã được đảo ở datasource: is_open=false -> isOn=true (mở), is_open=true -> isOn=false (đóng)
+                  device.isOn ? 'Đang mở' : 'Đang đóng',
                   style: AppTypography.bodyM.copyWith(
-                    color: isOpen ? AppColors.primary : AppColors.textSecondary,
+                    color: device.isOn ? AppColors.primary : AppColors.textSecondary,
                   ),
                 ),
               ],
-            ),
-          ),
-          Transform.scale(
-            scale: 0.9,
-            child: Switch(
-              value: isOpen,
-              onChanged: (_) => onToggle(),
-              activeTrackColor: AppColors.primary,
-              activeThumbColor: Colors.white,
             ),
           ),
         ],

@@ -228,12 +228,14 @@ class DeviceFirebaseDataSource {
     // Parse gate
     if (data['gate'] != null) {
       final gate = data['gate'] as Map<dynamic, dynamic>;
+      // Đảo ngược logic: false = mở, true = đóng (phần cứng bị code ngược)
+      final isOpenFromHardware = gate['is_open'] as bool? ?? false;
       devices.add(DeviceModel(
         id: 'gate-main',
         name: 'Cổng Chính',
         type: DeviceType.lock,
         room: 'Cổng',
-        isOn: gate['is_open'] as bool? ?? false,
+        isOn: !isOpenFromHardware, // Đảo ngược: false (mở) -> true, true (đóng) -> false
         power: 3.0,
       ));
     }
@@ -318,12 +320,14 @@ class DeviceFirebaseDataSource {
           power: 50.0,
         );
       case 'gate-main':
+        // Đảo ngược logic: false = mở, true = đóng (phần cứng bị code ngược)
+        final isOpenFromHardware = data['is_open'] as bool? ?? false;
         return DeviceModel(
           id: id,
           name: 'Cổng Chính',
           type: DeviceType.lock,
           room: 'Cổng',
-          isOn: data['is_open'] as bool? ?? false,
+          isOn: !isOpenFromHardware, // Đảo ngược: false (mở) -> true, true (đóng) -> false
           power: 3.0,
         );
       case 'door-living':

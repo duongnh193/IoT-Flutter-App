@@ -47,6 +47,11 @@ class AnalysisDetailScreen extends ConsumerWidget {
                 onChanged: (value) =>
                     ref.read(analysisPeriodProvider.notifier).state = value,
               ),
+              // Hiển thị week picker khi period == week
+              if (period == AnalysisPeriod.week) ...[
+                SizedBox(height: spacing),
+                _WeekPicker(),
+              ],
               SizedBox(height: spacing),
               _EnergyBarCard(detail: detail),
               SizedBox(height: spacing),
@@ -235,11 +240,23 @@ class _EnergyBarCard extends StatelessWidget {
             : 260.0;
     
     // Convert kwh to wh for display
+    // daily_data trong Firestore lưu giá trị kwh (ví dụ: 0.00225 kwh)
+    // Cần convert sang wh để hiển thị: 0.00225 kwh * 1000 = 2.25 wh
     final pointsInWh = detail.points.map((e) => e.kwh * 1000).toList();
     
+    // Debug: Print để kiểm tra dữ liệu
+    print('Chart data: ${detail.points.length} points');
+    print('Sample points: ${detail.points.take(3).map((p) => '${p.label}: ${p.kwh}kwh = ${p.kwh * 1000}wh').join(', ')}');
+    
     // Tính min và max từ dữ liệu thực tế
-    final minValue = pointsInWh.reduce((a, b) => a < b ? a : b);
-    final maxValue = pointsInWh.reduce((a, b) => a > b ? a : b);
+    final minValue = pointsInWh.isNotEmpty 
+        ? pointsInWh.reduce((a, b) => a < b ? a : b)
+        : 0.0;
+    final maxValue = pointsInWh.isNotEmpty
+        ? pointsInWh.reduce((a, b) => a > b ? a : b)
+        : 0.0;
+    
+    print('Chart Y-axis range: min=$minValue wh, max=$maxValue wh');
     
     // Tính maxY với khoảng trống hợp lý (10-20% phía trên)
     // Đảm bảo minY là 0 hoặc gần 0 nếu tất cả giá trị đều dương
@@ -700,6 +717,106 @@ class _EnergyBarCard extends StatelessWidget {
                   minY: minY,
                 ),
               );
+  }
+}
+
+/// Week picker widget - cho phép chọn tuần trong tháng
+class _WeekPicker extends ConsumerWidget {
+  const _WeekPicker();
+
+  /// Tính số tuần trong tháng
+  /// Logic mới: Tuần được tính theo ngày trong tháng (1-7, 8-14, 15-21, 22-28, 29-31)
+  int _getWeeksInMonth(int year, int month) {
+    final lastDay = DateTime(year, month + 1, 0);
+    final totalDays = lastDay.day;
+    // Tính số tuần: mỗi tuần 7 ngày, tuần cuối có thể ít hơn
+    return ((totalDays - 1) ~/ 7) + 1;
+  }
+
+  /// Format tuần để hiển thị (ví dụ: "Tuần 1 (1-7/12)")
+  /// Logic mới: Tuần 0 = 1-7, Tuần 1 = 8-14, Tuần 2 = 15-21, Tuần 3 = 22-28, Tuần 4 = 29-31
+  String _formatWeekLabel(int weekNumber, int year, int month) {
+    final lastDay = DateTime(year, month + 1, 0);
+    
+    // Tính ngày bắt đầu và kết thúc của tuần
+    final weekStartDay = 1 + (weekNumber * 7);
+    final weekEndDay = (weekStartDay + 6) > lastDay.day ? lastDay.day : (weekStartDay + 6);
+    
+    return 'Tuần ${weekNumber + 1} ($weekStartDay-$weekEndDay/$month)';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sizeClass = context.screenSizeClass;
+    final selectedMonthId = ref.watch(selectedMonthIdProvider);
+    final selectedWeek = ref.watch(selectedWeekProvider);
+    
+    // Parse year và month từ selectedMonthId hoặc dùng tháng hiện tại
+    int year, month;
+    if (selectedMonthId != null) {
+      final parts = selectedMonthId.split('_');
+      if (parts.length == 2) {
+        year = int.tryParse(parts[0]) ?? DateTime.now().year;
+        month = int.tryParse(parts[1]) ?? DateTime.now().month;
+      } else {
+        final now = DateTime.now();
+        year = now.year;
+        month = now.month;
+      }
+    } else {
+      final now = DateTime.now();
+      year = now.year;
+      month = now.month;
+    }
+    
+    final weeksCount = _getWeeksInMonth(year, month);
+    final currentWeek = selectedWeek ?? 0;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.panel,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: EdgeInsets.all(sizeClass == ScreenSizeClass.compact ? 4 : 6),
+      child: Row(
+        children: List.generate(weeksCount, (index) {
+          final isSelected = currentWeek == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                ref.read(selectedWeekProvider.notifier).state = index;
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(
+                  vertical: sizeClass == ScreenSizeClass.compact ? 8 : 10,
+                  horizontal: sizeClass == ScreenSizeClass.compact ? 4 : 6,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Center(
+                  child: Text(
+                    _formatWeekLabel(index, year, month),
+                    style: context.responsiveBodyM.copyWith(
+                      fontSize: sizeClass == ScreenSizeClass.compact ? 11 : 12,
+                      color: isSelected
+                          ? Colors.white
+                          : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
   }
 }
 

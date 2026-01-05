@@ -161,13 +161,11 @@ class _GateRoomScreenState extends ConsumerState<GateRoomScreen> {
                 ),
                 SizedBox(height: sectionSpacing),
                 
-                // Gate device row
+                // Gate device row - chỉ hiển thị trạng thái, không có nút điều khiển
+                // Logic đã được đảo ở datasource: is_open=false -> isOn=true (mở), is_open=true -> isOn=false (đóng)
                 _DeviceRow(
                   device: gateDevice,
                   status: gateDevice.isOn ? 'Đang Mở' : 'Đang Đóng',
-                  onToggle: () {
-                    ref.read(deviceControllerProvider.notifier).toggle(gateDevice.id);
-                  },
                 ),
                 
                 Divider(
@@ -281,17 +279,15 @@ class _GateHeader extends StatelessWidget {
   }
 }
 
-/// Device row with icon, name, status, and toggle switch
+/// Device row with icon, name, status (no toggle switch for gate)
 class _DeviceRow extends ConsumerWidget {
   const _DeviceRow({
     required this.device,
     required this.status,
-    required this.onToggle,
   });
 
   final Device device;
   final String status;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -344,23 +340,10 @@ class _DeviceRow extends ConsumerWidget {
               Text(
                 status,
                 style: context.responsiveBodyM.copyWith(
-                  color: AppColors.textSecondary,
+                  color: isOn ? AppColors.primary : AppColors.textSecondary, // Màu xanh khi mở (isOn=true)
                 ),
               ),
             ],
-          ),
-        ),
-        
-        // Toggle switch
-        Transform.scale(
-          scale: sizeClass == ScreenSizeClass.expanded ? 1.2 : 1.0,
-          child: Switch(
-            value: isOn,
-            onChanged: (_) => onToggle(),
-            activeTrackColor: AppColors.primary,
-            activeThumbColor: Colors.white,
-            inactiveTrackColor: AppColors.borderSoft,
-            inactiveThumbColor: Colors.white,
           ),
         ),
       ],
